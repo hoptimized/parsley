@@ -1,0 +1,37 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "default",
+            "displayName": "Default",
+            "inherits": "base"
+        },
+        {
+            "name": "dev",
+            "displayName": "Develop (with Tests)",
+            "inherits": "base",
+            "cacheVariables": { "PARSLEY_BUILD_TESTS": "ON" }
+        }
+    ],
+    "buildPresets": [
+        { "name": "default-debug",   "configurePreset": "default", "configuration": "Debug" },
+        { "name": "default-release", "configurePreset": "default", "configuration": "Release" },
+        { "name": "dev-debug",       "configurePreset": "dev",     "configuration": "Debug" },
+        { "name": "dev-release",     "configurePreset": "dev",     "configuration": "Release" }
+    ],
+    "testPresets": [
+        { "name": "dev-debug",   "configurePreset": "dev", "configuration": "Debug" },
+        { "name": "dev-release", "configurePreset": "dev", "configuration": "Release" }
+    ]
+}
