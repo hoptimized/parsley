@@ -10,7 +10,7 @@ env:
   # Only test these C++ standards. CMakePresets.json has presets for
   # more standards than this (added ahead of time for when they're
   # supported).
-  ACTIVE_CPP_STANDARDS: "20,23"
+  ACTIVE_CPP_STANDARDS: "17,20,23"
 
 jobs:
   # ---------------------------------------------------------------------
