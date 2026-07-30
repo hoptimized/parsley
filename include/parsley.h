@@ -6,7 +6,6 @@
 #include <string>
 #include <type_traits>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace parsley
@@ -28,6 +27,14 @@ namespace parsley
     ///////////////// Storage /////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    enum class NodeType
+    {
+        Null,
+        Scalar,
+        List,
+        Map
+    };
+
     struct NullStorage
     {
     };
@@ -47,7 +54,165 @@ namespace parsley
         std::vector<std::pair<std::string, std::unique_ptr<Node>>> kvps;
     };
 
-    using NodeStorage = std::variant<NullStorage, ScalarStorage, ListStorage, MapStorage>;
+    // Compile-time mapping from storage type to NodeType enum value
+    template <typename T> struct NodeTypeOf;
+    template <> struct NodeTypeOf<NullStorage> { static constexpr NodeType value = NodeType::Null; };
+    template <> struct NodeTypeOf<ScalarStorage> { static constexpr NodeType value = NodeType::Scalar; };
+    template <> struct NodeTypeOf<ListStorage> { static constexpr NodeType value = NodeType::List; };
+    template <> struct NodeTypeOf<MapStorage> { static constexpr NodeType value = NodeType::Map; };
+
+    class NodeStorage
+    {
+    public:
+        NodeStorage() : type_(NodeType::Null)
+        {
+            new (&null_) NullStorage();
+        }
+
+        NodeStorage(NullStorage v) : type_(NodeType::Null)
+        {
+            new (&null_) NullStorage(std::move(v));
+        }
+
+        NodeStorage(ScalarStorage v) : type_(NodeType::Scalar)
+        {
+            new (&scalar_) ScalarStorage(std::move(v));
+        }
+
+        NodeStorage(ListStorage v) : type_(NodeType::List)
+        {
+            new (&list_) ListStorage(std::move(v));
+        }
+
+        NodeStorage(MapStorage v) : type_(NodeType::Map)
+        {
+            new (&map_) MapStorage(std::move(v));
+        }
+
+        NodeStorage(NodeStorage&& other) noexcept : type_(other.type_)
+        {
+            move(std::move(other));
+        }
+
+        NodeStorage& operator=(NodeStorage&& other) noexcept
+        {
+            if (this != &other)
+            {
+                destroy();
+                type_ = other.type_;
+                move(std::move(other));
+            }
+            return *this;
+        }
+        
+        NodeStorage(const NodeStorage&) = delete;
+        NodeStorage& operator=(const NodeStorage&) = delete;
+
+        ~NodeStorage()
+        {
+            destroy();
+        }
+
+        NodeType type() const
+        {
+            return type_;
+        }
+
+        template <typename T>
+        bool is() const
+        {
+            return type_ == NodeTypeOf<T>::value;
+        }
+
+        bool is(NodeType type) const
+        {
+            return type_ == type;
+        }
+
+        template <typename T>
+        T& get()
+        {
+            if (!is<T>())
+                throw std::runtime_error("Wrong node type.");
+
+            return get_internal(static_cast<T*>(nullptr));
+        }
+
+        template <typename T>
+        const T& get() const
+        {
+            return const_cast<NodeStorage*>(this)->get<T>();
+        }
+
+        template <typename T>
+        T* try_get()
+        {
+            if (!is<T>())
+                return nullptr;
+
+            return &get_internal(static_cast<T*>(nullptr));
+        }
+
+        template <typename T>
+        const T* try_get() const
+        {
+            return const_cast<NodeStorage*>(this)->try_get<T>();
+        }
+
+    private:
+        void move(NodeStorage&& other)
+        {
+            switch (type_)
+            {
+                case NodeType::Null:
+                    new (&null_) NullStorage(std::move(other.null_));
+                    break;
+                case NodeType::Scalar:
+                    new (&scalar_) ScalarStorage(std::move(other.scalar_));
+                    break;
+                case NodeType::List:
+                    new (&list_) ListStorage(std::move(other.list_));   
+                    break;
+                case NodeType::Map:
+                    new (&map_) MapStorage(std::move(other.map_));    
+                    break;
+            }
+        }
+
+        void destroy()
+        {
+            switch (type_)
+            {
+                case NodeType::Null:
+                    null_.~NullStorage();
+                    break;
+                case NodeType::Scalar:
+                    scalar_.~ScalarStorage();
+                    break;
+                case NodeType::List:
+                    list_.~ListStorage();
+                    break;
+                case NodeType::Map:
+                    map_.~MapStorage();
+                    break;
+            }
+        }
+
+        NullStorage& get_internal(NullStorage*) { return null_; }
+        ScalarStorage& get_internal(ScalarStorage*) { return scalar_; }
+        ListStorage& get_internal(ListStorage*) { return list_; }
+        MapStorage& get_internal(MapStorage*) { return map_; }
+
+        NodeType type_;
+
+        union
+        {
+            NullStorage null_;
+            ScalarStorage scalar_;
+            ListStorage list_;
+            MapStorage map_;
+        };
+    };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////// Transfer (Base Template) ////////////////////////////////////////////////////////////
@@ -110,7 +275,7 @@ namespace parsley
             auto child = std::make_unique<Node>();
             *child = std::forward<T>(val);
 
-            auto& values = std::get<ListStorage>(storage_).values;
+            auto& values = storage_.get<ListStorage>().values;
             values.emplace_back(std::move(child));
         }
 
@@ -145,10 +310,14 @@ namespace parsley
         //-------------------------------------------------------------------------------------------------
         // Identity
 
-        bool is_null() const { return std::holds_alternative<NullStorage>(storage_); }
-        bool is_scalar() const { return std::holds_alternative<ScalarStorage>(storage_); }
-        bool is_list() const { return std::holds_alternative<ListStorage>(storage_); }
-        bool is_map() const { return std::holds_alternative<MapStorage>(storage_); }
+        NodeType type() const { return storage_.type(); }
+
+        bool is_null() const { return storage_.is<NullStorage>(); }
+        bool is_scalar() const { return storage_.is<ScalarStorage>(); }
+        bool is_list() const { return storage_.is<ListStorage>(); }
+        bool is_map() const { return storage_.is<MapStorage>(); }
+
+        bool is(NodeType type) const { return storage_.is(type); }
 
         //-------------------------------------------------------------------------------------------------
         // Capacity
@@ -160,13 +329,13 @@ namespace parsley
 
         std::size_t size() const
         {
-            if (const auto* null = std::get_if<NullStorage>(&storage_))
+            if (const auto* null = storage_.try_get<NullStorage>())
                 return 0;
-            if (const auto* scalar = std::get_if<ScalarStorage>(&storage_))
+            if (const auto* scalar = storage_.try_get<ScalarStorage>())
                 return 1;
-            if (const auto* list = std::get_if<ListStorage>(&storage_))
+            if (const auto* list = storage_.try_get<ListStorage>())
                 return list->values.size();
-            if (const auto* map = std::get_if<MapStorage>(&storage_))
+            if (const auto* map = storage_.try_get<MapStorage>())
                 return map->kvps.size();
             return 0;
         }
@@ -181,7 +350,7 @@ namespace parsley
 
         const std::string& get_scalar() const
         {
-            const auto* s = std::get_if<ScalarStorage>(&storage_);
+            const auto* s = storage_.try_get<ScalarStorage>();
             if (!s)
                 throw std::runtime_error("Node does not hold a scalar");
             return s->value;
@@ -217,7 +386,7 @@ namespace parsley
 
                 // We are now certain that this is a List, continue to lookup/insert
 
-                auto& values = std::get<ListStorage>(storage_).values;
+                auto& values = storage_.get<ListStorage>().values;
 
                 // Index within bounds, access List by index
                 if (idx < values.size())
@@ -251,10 +420,10 @@ namespace parsley
                     if (!allow_insert)
                         throw std::runtime_error("Cannot access list by string key.");
 
-                    auto old_values = std::move(std::get<ListStorage>(storage_).values);
+                    auto old_values = std::move(storage_.get<ListStorage>().values);
 
                     storage_ = MapStorage{};
-                    auto& kvps = std::get<MapStorage>(storage_).kvps;
+                    auto& kvps = storage_.get<MapStorage>().kvps;
 
                     for (size_t i = 0; i < old_values.size(); ++i)
                     {
@@ -273,7 +442,7 @@ namespace parsley
                     
                     if (allow_insert)
                     {
-                        auto& kvps = std::get<MapStorage>(storage_).kvps;
+                        auto& kvps = storage_.get<MapStorage>().kvps;
                         kvps.emplace_back(std::make_pair(str_key, std::make_unique<Node>()));
                         return kvps.back().second.get();
                     }
@@ -307,7 +476,7 @@ namespace parsley
 
         const Node* find_map_value(std::string_view key) const
         {
-            const auto& kvps = std::get<MapStorage>(storage_).kvps;
+            const auto& kvps = storage_.get<MapStorage>().kvps;
 
             for (const auto& [it_key, value] : kvps)
             {

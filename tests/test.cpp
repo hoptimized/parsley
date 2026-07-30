@@ -7,6 +7,9 @@ TEST_CASE("Node - construction and assignment")
 {
     SECTION("construct from scalar types")
     {
+        Node n;
+        REQUIRE(n.is_null());
+
         Node s = "hello";
         REQUIRE(s.as<std::string>() == "hello");
         REQUIRE(s.is_scalar());
@@ -463,6 +466,50 @@ TEST_CASE("Node - identity")
         REQUIRE_FALSE(node.is_null());
         REQUIRE_FALSE(node.is_scalar());
         REQUIRE_FALSE(node.is_list());
+    }
+
+    SECTION("type() returns the correct enum value")
+    {
+        Node n;
+        REQUIRE(n.type() == NodeType::Null);
+
+        Node s = "hello";
+        REQUIRE(s.type() == NodeType::Scalar);
+
+        Node l = std::vector<int>{ 1,2,3 };
+        REQUIRE(l.type() == NodeType::List);
+
+        Node m;
+        m["foo"] = 1;
+        REQUIRE(m.type() == NodeType::Map);
+    }
+
+    SECTION("is() correctly identifies node type")
+    {
+        Node n;
+        REQUIRE(n.is(NodeType::Null));
+        REQUIRE(!n.is(NodeType::Scalar));
+        REQUIRE(!n.is(NodeType::List));
+        REQUIRE(!n.is(NodeType::Map));
+
+        Node s = "hello";
+        REQUIRE(!s.is(NodeType::Null));
+        REQUIRE(s.is(NodeType::Scalar));
+        REQUIRE(!s.is(NodeType::List));
+        REQUIRE(!s.is(NodeType::Map));
+
+        Node l = std::vector<int>{ 1,2,3 };
+        REQUIRE(!l.is(NodeType::Null));
+        REQUIRE(!l.is(NodeType::Scalar));
+        REQUIRE(l.is(NodeType::List));
+        REQUIRE(!l.is(NodeType::Map));
+
+        Node m;
+        m["foo"] = 1;
+        REQUIRE(!m.is(NodeType::Null));
+        REQUIRE(!m.is(NodeType::Scalar));
+        REQUIRE(!m.is(NodeType::List));
+        REQUIRE(m.is(NodeType::Map));
     }
 }
 
