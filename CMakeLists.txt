@@ -6,20 +6,10 @@ project(
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+add_library(parsley INTERFACE)
+add_library(parsley::parsley ALIAS parsley)
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-
-add_library(parsley ${SOURCES})
-
-target_include_directories(parsley
-    PUBLIC
-        include
-    PRIVATE
-        src)
+target_include_directories(parsley INTERFACE include)
 
 option(PARSLEY_BUILD_TESTS "Build parsley tests" OFF)
 

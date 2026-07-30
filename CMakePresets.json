@@ -7,31 +7,233 @@
             "generator": "Ninja Multi-Config",
             "binaryDir": "${sourceDir}/build/${presetName}",
             "cacheVariables": {
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "PARSLEY_BUILD_TESTS": "ON"
             }
         },
         {
-            "name": "default",
-            "displayName": "Default",
-            "inherits": "base"
+            "name": "gcc-base",
+            "hidden": true,
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
         },
         {
-            "name": "dev",
-            "displayName": "Develop (with Tests)",
+            "name": "clang-base",
+            "hidden": true,
             "inherits": "base",
-            "cacheVariables": { "PARSLEY_BUILD_TESTS": "ON" }
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "msvc-base",
+            "hidden": true,
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl"
+            }
+        },
+        {
+            "name": "gcc-base-cpp11",
+            "displayName": "gcc-base-cpp11",
+            "inherits": "gcc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "11"
+            }
+        },
+        {
+            "name": "gcc-base-cpp14",
+            "displayName": "gcc-base-cpp14",
+            "inherits": "gcc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "14"
+            }
+        },
+        {
+            "name": "gcc-base-cpp17",
+            "displayName": "gcc-base-cpp17",
+            "inherits": "gcc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "17"
+            }
+        },
+        {
+            "name": "gcc-base-cpp20",
+            "displayName": "gcc-base-cpp20",
+            "inherits": "gcc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "20"
+            }
+        },
+        {
+            "name": "gcc-base-cpp23",
+            "displayName": "gcc-base-cpp23",
+            "inherits": "gcc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "23"
+            }
+        },
+        {
+            "name": "clang-base-cpp11",
+            "displayName": "clang-base-cpp11",
+            "inherits": "clang-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "11" 
+            }
+        },
+        {
+            "name": "clang-base-cpp14",
+            "displayName": "clang-base-cpp14",
+            "inherits": "clang-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "14" 
+            }
+        },
+        {
+            "name": "clang-base-cpp17",
+            "displayName": "clang-base-cpp17",
+            "inherits": "clang-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "17" 
+            }
+        },
+        {
+            "name": "clang-base-cpp20",
+            "displayName": "clang-base-cpp20",
+            "inherits": "clang-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "20" 
+            }
+        },
+        {
+            "name": "clang-base-cpp23",
+            "displayName": "clang-base-cpp23",
+            "inherits": "clang-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "23" 
+            }
+        },
+        {
+            "name": "msvc-base-cpp11",
+            "displayName": "msvc-base-cpp11",
+            "inherits": "msvc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "11"
+            }
+        },
+        {
+            "name": "msvc-base-cpp14",
+            "displayName": "msvc-base-cpp14",
+            "inherits": "msvc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "14"
+            }
+        },
+        {
+            "name": "msvc-base-cpp17",
+            "displayName": "msvc-base-cpp17",
+            "inherits": "msvc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "17"
+            }
+        },
+        {
+            "name": "msvc-base-cpp20",
+            "displayName": "msvc-base-cpp20",
+            "inherits": "msvc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "20"
+            }
+        },
+        {
+            "name": "msvc-base-cpp23",
+            "displayName": "msvc-base-cpp23",
+            "inherits": "msvc-base",
+            "cacheVariables": {
+                "PARSLEY_TESTS_CXX_STANDARD": "23"
+            }
         }
     ],
-    "buildPresets": [
-        { "name": "default-debug",   "configurePreset": "default", "configuration": "Debug" },
-        { "name": "default-release", "configurePreset": "default", "configuration": "Release" },
-        { "name": "dev-debug",       "configurePreset": "dev",     "configuration": "Debug" },
-        { "name": "dev-release",     "configurePreset": "dev",     "configuration": "Release" }
-    ],
     "testPresets": [
-        { "name": "dev-debug",   "configurePreset": "dev", "configuration": "Debug" },
-        { "name": "dev-release", "configurePreset": "dev", "configuration": "Release" }
+        {
+            "name": "gcc-debug-cpp11",
+            "configurePreset": "gcc-base-cpp11",
+            "configuration": "Debug"
+        },
+        {
+            "name": "gcc-debug-cpp14",
+            "configurePreset": "gcc-base-cpp14",
+            "configuration": "Debug"
+        },
+        {
+            "name": "gcc-debug-cpp17",
+            "configurePreset": "gcc-base-cpp17",
+            "configuration": "Debug"
+        },
+        {
+            "name": "gcc-debug-cpp20",
+            "configurePreset": "gcc-base-cpp20",
+            "configuration": "Debug"
+        },
+        {
+            "name": "gcc-debug-cpp23",
+            "configurePreset": "gcc-base-cpp23",
+            "configuration": "Debug"
+        },
+        {
+            "name": "clang-debug-cpp11",   
+            "configurePreset": "clang-base-cpp11",
+            "configuration": "Debug"
+        },
+        {
+            "name": "clang-debug-cpp14",   
+            "configurePreset": "clang-base-cpp14",
+            "configuration": "Debug"
+        },
+        {
+            "name": "clang-debug-cpp17",   
+            "configurePreset": "clang-base-cpp17",
+            "configuration": "Debug"
+        },
+        {
+            "name": "clang-debug-cpp20",   
+            "configurePreset": "clang-base-cpp20",
+            "configuration": "Debug"
+        },
+        { 
+            "name": "clang-debug-cpp23",   
+            "configurePreset": "clang-base-cpp23",
+            "configuration": "Debug"
+        },
+        {
+            "name": "msvc-debug-cpp11",
+            "configurePreset": "msvc-base-cpp11",
+            "configuration": "Debug"
+        },
+        {
+            "name": "msvc-debug-cpp14",
+            "configurePreset": "msvc-base-cpp14",
+            "configuration": "Debug"
+        },
+        {
+            "name": "msvc-debug-cpp17",
+            "configurePreset": "msvc-base-cpp17",
+            "configuration": "Debug"
+        },
+        {
+            "name": "msvc-debug-cpp20",
+            "configurePreset": "msvc-base-cpp20",
+            "configuration": "Debug"
+        },
+        {
+            "name": "msvc-debug-cpp23",
+            "configurePreset": "msvc-base-cpp23",
+            "configuration": "Debug"
+        }
     ]
 }
