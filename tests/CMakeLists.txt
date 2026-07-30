@@ -42,9 +42,25 @@ catch_discover_tests(parsley_tests)
 
 # --- Export Compile Commands --------------------------------------------
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
+
+    # Symlink compile database from the build directory to the project root
+    # so that clangd can find it for code browsing.
     file(CREATE_LINK
         ${CMAKE_BINARY_DIR}/compile_commands.json
         ${CMAKE_SOURCE_DIR}/compile_commands.json
         SYMBOLIC
+    )
+
+    # clangd guesses compile flags for headers (nothing compiles a .h directly)
+    # by picking a similar-looking .cpp from compile_commands.json. With vendored
+    # deps in _deps/ (e.g. Catch2), it can guess a vendor file instead of our own
+    # test .cpp files, causing errors on code that actually compiles fine.
+    # Fix: strip _deps/ entries so it can only match our own files.
+    add_custom_target(prune-compile-commands ALL
+        COMMAND jq [=[[.[] | select(.file | contains("_deps") | not)]]=]
+                ${CMAKE_BINARY_DIR}/compile_commands.json > ${CMAKE_BINARY_DIR}/cc_pruned.json
+        COMMAND ${CMAKE_COMMAND} -E rename
+                ${CMAKE_BINARY_DIR}/cc_pruned.json ${CMAKE_BINARY_DIR}/compile_commands.json
+        VERBATIM
     )
 endif()
