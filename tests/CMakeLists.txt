@@ -58,9 +58,9 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
     # Fix: strip _deps/ entries so it can only match our own files.
     add_custom_target(prune-compile-commands ALL
         COMMAND jq [=[[.[] | select(.file | contains("_deps") | not)]]=]
-                ${CMAKE_BINARY_DIR}/compile_commands.json > ${CMAKE_BINARY_DIR}/cc_pruned.json
+            ${CMAKE_BINARY_DIR}/compile_commands.json > ${CMAKE_BINARY_DIR}/cc_pruned.json
         COMMAND ${CMAKE_COMMAND} -E rename
-                ${CMAKE_BINARY_DIR}/cc_pruned.json ${CMAKE_BINARY_DIR}/compile_commands.json
+            ${CMAKE_BINARY_DIR}/cc_pruned.json ${CMAKE_BINARY_DIR}/compile_commands.json
         VERBATIM
     )
 endif()

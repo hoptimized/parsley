@@ -1,5 +1,6 @@
 #pragma once
 
+// This include helps clangd understand the code
 #include "parsley/Node.h"
 
 #include "parsley/Transfer.h"

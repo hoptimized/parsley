@@ -1,5 +1,6 @@
 #pragma once
 
+// This include helps clangd understand the code
 #include "parsley/Node.h"
 
 #include "parsley/NodeType.h"
@@ -11,13 +12,10 @@ namespace parsley
     namespace detail
     {
         ListStorage::~ListStorage() = default;
-
         ListStorage::ListStorage(ListStorage&&) noexcept = default;
         ListStorage& ListStorage::operator=(ListStorage&&) noexcept = default;
 
-
         MapStorage::~MapStorage() = default;
-
         MapStorage::MapStorage(MapStorage&&) noexcept = default;
         MapStorage& MapStorage::operator=(MapStorage&&) noexcept = default;
 
