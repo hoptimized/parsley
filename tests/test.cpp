@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <parsley.h>
+#include <parsley/parsley.h>
 
 using namespace parsley;
 
