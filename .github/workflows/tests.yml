@@ -1,0 +1,87 @@
+name: Tests
+
+# Run on every non-draft PR, and re-run whenever the PR gets new commits
+# or is converted from draft to ready-for-review.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+env:
+  # Only test these C++ standards. CMakePresets.json has presets for
+  # more standards than this (added ahead of time for when they're
+  # supported).
+  ACTIVE_CPP_STANDARDS: "20,23"
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Build the full config list straight from CMakePresets.json's
+  # testPresets, filtered down to ACTIVE_CPP_STANDARDS above.
+  #
+  # Convention relied on here: testPreset names look like
+  # "<compiler>-debug-cppNN" (gcc/clang/msvc).
+  # ---------------------------------------------------------------------
+  generate-matrix:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: set-matrix
+        run: |
+          active_json=$(printf '%s' "$ACTIVE_CPP_STANDARDS" | jq -R -c 'split(",")')
+
+          matrix=$(jq -c --argjson active "$active_json" '
+            [ .testPresets[]
+              | . + { std: (.name | capture("cpp(?<s>[0-9]+)$").s) }
+              | select(.std as $s | $active | index($s) != null)
+              | {
+                  testPreset: .name,
+                  configurePreset: .configurePreset,
+                  configuration: .configuration,
+                  os: (if (.name | startswith("msvc"))
+                       then "windows-latest"
+                       else "ubuntu-latest"
+                       end)
+                }
+            ]
+          ' CMakePresets.json)
+          echo "matrix=$matrix" | tee -a "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------
+  # One job per compiler/std combo
+  # ---------------------------------------------------------------------
+  test:
+    needs: generate-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.testPreset }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja -y
+
+      - name: Set up MSVC dev environment
+        if: runner.os == 'Windows'
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - name: Configure (${{ matrix.configurePreset }})
+        run: cmake --preset ${{ matrix.configurePreset }}
+
+      - name: Build
+        run: cmake --build build/${{ matrix.configurePreset }} --config ${{ matrix.configuration }}
+
+      - name: Test (${{ matrix.testPreset }})
+        run: ctest --preset ${{ matrix.testPreset }} --output-on-failure
