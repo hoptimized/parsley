@@ -1,0 +1,118 @@
+name: Tests
+
+# Run on every non-draft PR, and re-run whenever the PR gets new commits
+# or is converted from draft to ready-for-review.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+env:
+  # Only test these C++ standards. CMakePresets.json has presets for
+  # more standards than this (added ahead of time for when they're
+  # supported).
+  ACTIVE_CPP_STANDARDS: "20,23"
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Build the full config list straight from CMakePresets.json's
+  # testPresets, filtered down to ACTIVE_CPP_STANDARDS above, plus the
+  # distinct set of compilers (each paired with the OS it runs on) it
+  # needs.
+  #
+  # Convention relied on here: testPreset names look like
+  # "<compiler>-debug-cppNN" (gcc/clang/msvc).
+  # ---------------------------------------------------------------------
+  generate-matrix:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      configs: ${{ steps.set-matrix.outputs.configs }}
+      compilers: ${{ steps.set-matrix.outputs.compilers }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: set-matrix
+        run: |
+          active_json=$(printf '%s' "$ACTIVE_CPP_STANDARDS" | jq -R -c 'split(",")')
+
+          configs=$(jq -c --argjson active "$active_json" '
+            [ .testPresets[]
+              | . + { std: (.name | capture("cpp(?<s>[0-9]+)$").s) }
+              | select(.std as $s | $active | index($s) != null)
+              | {
+                  testPreset: .name,
+                  configurePreset: .configurePreset,
+                  configuration: .configuration,
+                  compiler: (.name | split("-")[0]),
+                  std: .std,
+                  os: (if (.name | startswith("msvc"))
+                       then "windows-latest"
+                       else "ubuntu-latest"
+                       end)
+                }
+            ]
+          ' CMakePresets.json)
+          compilers=$(echo "$configs" | jq -c '
+            [ .[] | {compiler, os} ] | unique
+          ')
+          echo "configs=$configs" | tee -a "$GITHUB_OUTPUT"
+          echo "compilers=$compilers" | tee -a "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------
+  # One runner per compiler. Each runner loops through every std variant 
+  # of that compiler sequentially, so tool setup (checkout, Ninja, 
+  # msvc-dev-cmd) happens once per compiler instead of once per combo.
+  # ---------------------------------------------------------------------
+  test:
+    needs: generate-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.compilers) }}
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.compiler }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      # Only needed on Windows so `cl`/`CMAKE_CXX_COMPILER: cl` resolve.
+      # Set up once per job, not once per combo.
+      - name: Set up MSVC dev environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Run all configs for this compiler
+        shell: bash
+        run: |
+          echo '${{ needs.generate-matrix.outputs.configs }}' \
+            | jq -c --arg compiler "${{ matrix.compiler }}" '[.[] | select(.compiler == $compiler)]' \
+            > configs.json
+
+          echo "## Results for ${{ matrix.compiler }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| config | result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+          overall=0
+          while IFS= read -r row; do
+            cp=$(jq -r '.configurePreset' <<< "$row")
+            tp=$(jq -r '.testPreset' <<< "$row")
+            cfg=$(jq -r '.configuration' <<< "$row")
+
+            echo "::group::$tp"
+            if cmake --preset "$cp" \
+              && cmake --build "build/$cp" --config "$cfg" \
+              && ctest --preset "$tp" --output-on-failure; then
+              echo "$tp: PASS"
+              echo "| $tp | pass |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "$tp: FAIL"
+              echo "| $tp | FAIL |" >> "$GITHUB_STEP_SUMMARY"
+              overall=1
+            fi
+            echo "::endgroup::"
+          done < <(jq -c '.[]' configs.json)
+
+          exit $overall
