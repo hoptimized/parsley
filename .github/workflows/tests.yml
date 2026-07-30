@@ -29,7 +29,7 @@ jobs:
       configs: ${{ steps.set-matrix.outputs.configs }}
       compilers: ${{ steps.set-matrix.outputs.compilers }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: set-matrix
         run: |
@@ -72,16 +72,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Set up Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v5
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+ 
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja -y
 
-      # Only needed on Windows so `cl`/`CMAKE_CXX_COMPILER: cl` resolve.
-      # Set up once per job, not once per combo.
       - name: Set up MSVC dev environment
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
 
       - name: Run all configs for this compiler
         shell: bash
