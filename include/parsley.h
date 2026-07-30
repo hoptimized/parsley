@@ -64,35 +64,14 @@ namespace parsley
     class NodeStorage
     {
     public:
-        NodeStorage() : type_(NodeType::Null)
-        {
-            new (&null_) NullStorage();
-        }
+        NodeStorage();
 
-        NodeStorage(NullStorage v) : type_(NodeType::Null)
-        {
-            new (&null_) NullStorage(std::move(v));
-        }
+        NodeStorage(NullStorage v);
+        NodeStorage(ScalarStorage v);
+        NodeStorage(ListStorage v);
+        NodeStorage(MapStorage v);
 
-        NodeStorage(ScalarStorage v) : type_(NodeType::Scalar)
-        {
-            new (&scalar_) ScalarStorage(std::move(v));
-        }
-
-        NodeStorage(ListStorage v) : type_(NodeType::List)
-        {
-            new (&list_) ListStorage(std::move(v));
-        }
-
-        NodeStorage(MapStorage v) : type_(NodeType::Map)
-        {
-            new (&map_) MapStorage(std::move(v));
-        }
-
-        NodeStorage(NodeStorage&& other) noexcept : type_(other.type_)
-        {
-            move(std::move(other));
-        }
+        NodeStorage(NodeStorage&& other) noexcept;
 
         NodeStorage& operator=(NodeStorage&& other) noexcept
         {
@@ -160,43 +139,8 @@ namespace parsley
         }
 
     private:
-        void move(NodeStorage&& other)
-        {
-            switch (type_)
-            {
-                case NodeType::Null:
-                    new (&null_) NullStorage(std::move(other.null_));
-                    break;
-                case NodeType::Scalar:
-                    new (&scalar_) ScalarStorage(std::move(other.scalar_));
-                    break;
-                case NodeType::List:
-                    new (&list_) ListStorage(std::move(other.list_));   
-                    break;
-                case NodeType::Map:
-                    new (&map_) MapStorage(std::move(other.map_));    
-                    break;
-            }
-        }
-
-        void destroy()
-        {
-            switch (type_)
-            {
-                case NodeType::Null:
-                    null_.~NullStorage();
-                    break;
-                case NodeType::Scalar:
-                    scalar_.~ScalarStorage();
-                    break;
-                case NodeType::List:
-                    list_.~ListStorage();
-                    break;
-                case NodeType::Map:
-                    map_.~MapStorage();
-                    break;
-            }
-        }
+        void move(NodeStorage&& other);
+        void destroy();
 
         NullStorage& get_internal(NullStorage*) { return null_; }
         ScalarStorage& get_internal(ScalarStorage*) { return scalar_; }
@@ -538,4 +482,76 @@ namespace parsley
                 val.push_back(node[i].as<T>());
         }
     };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////// Inline //////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    inline NodeStorage::NodeStorage() : type_(NodeType::Null)
+    {
+        new (&null_) NullStorage();
+    }
+
+    inline NodeStorage::NodeStorage(NullStorage v) : type_(NodeType::Null)
+    {
+        new (&null_) NullStorage(std::move(v));
+    }
+
+    inline NodeStorage::NodeStorage(ScalarStorage v) : type_(NodeType::Scalar)
+    {
+        new (&scalar_) ScalarStorage(std::move(v));
+    }
+
+    inline NodeStorage::NodeStorage(ListStorage v) : type_(NodeType::List)
+    {
+        new (&list_) ListStorage(std::move(v));
+    }
+
+    inline NodeStorage::NodeStorage(MapStorage v) : type_(NodeType::Map)
+    {
+        new (&map_) MapStorage(std::move(v));
+    }
+
+    inline NodeStorage::NodeStorage(NodeStorage&& other) noexcept : type_(other.type_)
+    {
+        move(std::move(other));
+    }
+
+    inline void NodeStorage::move(NodeStorage&& other)
+    {
+        switch (type_)
+        {
+            case NodeType::Null:
+                new (&null_) NullStorage(std::move(other.null_));
+                break;
+            case NodeType::Scalar:
+                new (&scalar_) ScalarStorage(std::move(other.scalar_));
+                break;
+            case NodeType::List:
+                new (&list_) ListStorage(std::move(other.list_));   
+                break;
+            case NodeType::Map:
+                new (&map_) MapStorage(std::move(other.map_));    
+                break;
+        }
+    }
+
+    inline void NodeStorage::destroy()
+    {
+        switch (type_)
+        {
+            case NodeType::Null:
+                null_.~NullStorage();
+                break;
+            case NodeType::Scalar:
+                scalar_.~ScalarStorage();
+                break;
+            case NodeType::List:
+                list_.~ListStorage();
+                break;
+            case NodeType::Map:
+                map_.~MapStorage();
+                break;
+        }
+    }
 }
