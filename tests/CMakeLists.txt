@@ -1,6 +1,6 @@
 # --- Options -----------------------------------------------------------
-set(supported_standards 20 23)
-set(PARSLEY_TESTS_CXX_STANDARD 20 CACHE STRING "C++ standard used for building the tests.")
+set(supported_standards 17 20 23)
+set(PARSLEY_TESTS_CXX_STANDARD 17 CACHE STRING "C++ standard used for building the tests.")
 
 if(NOT PARSLEY_TESTS_CXX_STANDARD IN_LIST supported_standards)
     list(JOIN supported_standards ", " supported_standards_str)

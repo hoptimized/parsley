@@ -12,6 +12,13 @@
 namespace parsley
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////// Standard Compatibility //////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename T>
+    using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////// Forward Declarations ////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -69,8 +76,7 @@ namespace parsley
         //-------------------------------------------------------------------------------------------------
         // Construction & Assignment
 
-        template <typename T>
-        requires (!std::is_same_v<std::decay_t<T>, Node>)
+        template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Node>>>
         Node(T&& val)
         {
             Transfer<std::decay_t<T>>::write(*this, std::forward<T>(val));
@@ -185,7 +191,7 @@ namespace parsley
         template <typename T>
         Node* get_collection_node(T key, bool allow_insert)
         {
-            using U = std::remove_cvref_t<T>;
+            using U = remove_cvref_t<T>;
 
             if (is_scalar())
                 throw std::runtime_error("Cannot access scalar by key.");
@@ -286,7 +292,7 @@ namespace parsley
         template <typename T>
         static size_t to_index(T key)
         {
-            using U = std::remove_cvref_t<T>;
+            using U = remove_cvref_t<T>;
 
             if constexpr (std::is_signed_v<U>)
             {
