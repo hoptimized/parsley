@@ -1,5 +1,6 @@
 #pragma once
 
+#include "parsley/core/StringView.h"
 #include "parsley/NodeType.h"
 
 #include <memory>
@@ -164,8 +165,8 @@ namespace parsley
     private:
         template <typename T> Node* get_collection_node(T key, bool allow_insert);
         template <typename T> static size_t to_index(T key);
-        const Node* find_map_value(std::string_view key) const;
-        Node* find_map_value(std::string_view key);
+        const Node* find_map_value(StringView key) const;
+        Node* find_map_value(StringView key);
 
         detail::NodeStorage storage_ = detail::NullStorage{};
     };

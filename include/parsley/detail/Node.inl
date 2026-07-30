@@ -202,9 +202,9 @@ namespace parsley
 
             throw std::runtime_error("Index out of bounds.");
         }
-        else if constexpr (std::is_constructible_v<std::string_view, T>)
+        else if constexpr (std::is_constructible_v<StringView, T>)
         {
-            std::string_view str_key{ key };
+            StringView str_key{ key };
 
             // Try convert Null node to Map
             if (is_null())
@@ -275,7 +275,7 @@ namespace parsley
         return static_cast<std::size_t>(key);
     }
 
-    inline const Node* Node::find_map_value(std::string_view key) const
+    inline const Node* Node::find_map_value(StringView key) const
     {
         const auto& kvps = storage_.get<detail::MapStorage>().kvps;
 
@@ -288,7 +288,7 @@ namespace parsley
         return nullptr;
     }
 
-    inline Node* Node::find_map_value(std::string_view key)
+    inline Node* Node::find_map_value(StringView key)
     {
         return const_cast<Node*>(static_cast<const Node&>(*this).find_map_value(key));
     }
