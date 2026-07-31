@@ -6,20 +6,13 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
 
-env:
-  # Only test these C++ standards. CMakePresets.json has presets for
-  # more standards than this (added ahead of time for when they're
-  # supported).
-  ACTIVE_CPP_STANDARDS: "14,17,20,23"
-
 jobs:
-  # ---------------------------------------------------------------------
-  # Build the full config list straight from CMakePresets.json's
-  # testPresets, filtered down to ACTIVE_CPP_STANDARDS above.
+  # ---------------------------------------------------------------------------
+  # Build the full config list straight from CMakePresets.json's testPresets.
   #
   # Convention relied on here: testPreset names look like
   # "<compiler>-debug-cppNN" (gcc/clang/msvc).
-  # ---------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
   generate-matrix:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
@@ -30,9 +23,7 @@ jobs:
 
       - id: set-matrix
         run: |
-          active_json=$(printf '%s' "$ACTIVE_CPP_STANDARDS" | jq -R -c 'split(",")')
-
-          matrix=$(jq -c --argjson active "$active_json" '
+          matrix=$(jq -c '
             [ .testPresets[]
               | . + { std: (.name | capture("cpp(?<s>[0-9]+)$").s) }
               | select(.std as $s | $active | index($s) != null)
@@ -49,9 +40,9 @@ jobs:
           ' CMakePresets.json)
           echo "matrix=$matrix" | tee -a "$GITHUB_OUTPUT"
 
-  # ---------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
   # One job per compiler/std combo
-  # ---------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
   test:
     needs: generate-matrix
     strategy:
