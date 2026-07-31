@@ -51,13 +51,6 @@ namespace parsley
             MapStorage& operator=(const MapStorage&) = delete;
         };
 
-        // Compile-time mapping from storage type to NodeType enum value
-        template <typename T> struct NodeTypeOf;
-        template <> struct NodeTypeOf<NullStorage> { static constexpr NodeType value = NodeType::Null; };
-        template <> struct NodeTypeOf<ScalarStorage> { static constexpr NodeType value = NodeType::Scalar; };
-        template <> struct NodeTypeOf<ListStorage> { static constexpr NodeType value = NodeType::List; };
-        template <> struct NodeTypeOf<MapStorage> { static constexpr NodeType value = NodeType::Map; };
-
         class NodeStorage
         {
         public:
