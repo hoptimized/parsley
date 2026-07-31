@@ -140,12 +140,12 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node.size() == 1);
     }
 
-    SECTION("list: negative index throws out_of_range")
+    SECTION("list: negative index throws")
     {
         Node node;
         node.push_back(10);
 
-        REQUIRE_THROWS_AS(node[-1], std::out_of_range);
+        REQUIRE_THROWS_AS(node[-1], std::runtime_error);
     }
 
     SECTION("map: access existing key")

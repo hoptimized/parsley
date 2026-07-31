@@ -163,8 +163,9 @@ namespace parsley
         const std::string& get_scalar() const;
 
     private:
-        template <typename T> Node* get_collection_node(T key, bool allow_insert);
-        template <typename T> static size_t to_index(T key);
+        Node* get_collection_node(size_t idx, bool allow_insert);
+        Node* get_collection_node(StringView key, bool allow_insert);
+
         const Node* find_map_value(StringView key) const;
         Node* find_map_value(StringView key);
 
