@@ -1,5 +1,7 @@
 #pragma once
 
+#include "parsley/core/StringView.h"
+#include "parsley/detail/util.h"
 #include "parsley/NodeType.h"
 
 #include <memory>
@@ -117,7 +119,7 @@ namespace parsley
         //-------------------------------------------------------------------------------------------------
         // Construction & Assignment
 
-        template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Node>>>
+        template <typename T, typename = std::enable_if_t<!is_same_v<std::decay_t<T>, Node>>>
         Node(T&& val);
 
         template <typename T> Node& operator=(T&& val);
@@ -162,10 +164,11 @@ namespace parsley
         const std::string& get_scalar() const;
 
     private:
-        template <typename T> Node* get_collection_node(T key, bool allow_insert);
-        template <typename T> static size_t to_index(T key);
-        const Node* find_map_value(std::string_view key) const;
-        Node* find_map_value(std::string_view key);
+        Node* get_collection_node(size_t idx, bool allow_insert);
+        Node* get_collection_node(StringView key, bool allow_insert);
+
+        const Node* find_map_value(StringView key) const;
+        Node* find_map_value(StringView key);
 
         detail::NodeStorage storage_ = detail::NullStorage{};
     };
