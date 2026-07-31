@@ -18,12 +18,15 @@ namespace parsley
             return std::string{ ptr_, len_ };
         }
 
-        bool operator==(const std::string& str)
+        const char* data() const { return ptr_; }
+        size_t size() const { return len_; }
+
+        bool operator==(const std::string& str) const
         {
             if (len_ != str.size())
                 return false;
-
-            return std::memcmp(ptr_, str.data(), std::min(len_, str.size())) == 0;
+            
+            return std::memcmp(ptr_, str.data(), len_) == 0;
         }
 
     private:
@@ -31,5 +34,11 @@ namespace parsley
         size_t len_;
     };
 
-    inline bool operator==(const std::string& lhs, const StringView& rhs) { return rhs == lhs; }
+    inline bool operator==(const std::string& lhs, const StringView& rhs)
+    {
+        if (lhs.size() != rhs.size())
+            return false;
+
+        return std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0;
+    }
 }

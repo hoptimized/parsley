@@ -256,10 +256,10 @@ namespace parsley
     {
         const auto& kvps = storage_.get<detail::MapStorage>().kvps;
 
-        for (const auto& [it_key, value] : kvps)
+        for (const auto& kvp: kvps)
         {
-            if (it_key == key)
-                return value.get();
+            if (kvp.first == key)
+                return kvp.second.get();
         }
 
         return nullptr;

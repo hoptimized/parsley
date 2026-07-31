@@ -1,6 +1,7 @@
 #pragma once
 
 #include "parsley/core/StringView.h"
+#include "parsley/detail/util.h"
 #include "parsley/NodeType.h"
 
 #include <memory>
@@ -118,7 +119,7 @@ namespace parsley
         //-------------------------------------------------------------------------------------------------
         // Construction & Assignment
 
-        template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Node>>>
+        template <typename T, typename = std::enable_if_t<!is_same_v<std::decay_t<T>, Node>>>
         Node(T&& val);
 
         template <typename T> Node& operator=(T&& val);
