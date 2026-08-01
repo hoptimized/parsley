@@ -29,6 +29,12 @@ target_link_libraries(parsley_tests
         doctest::doctest_with_main
 )
 
+target_include_directories(parsley_tests PRIVATE .)
+
+target_precompile_headers(parsley_tests
+    PRIVATE
+        pch.h)
+
 set_target_properties(parsley_tests PROPERTIES
     CXX_STANDARD ${PARSLEY_TESTS_CXX_STANDARD}
     CXX_STANDARD_REQUIRED ON
