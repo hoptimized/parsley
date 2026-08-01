@@ -11,13 +11,12 @@ endif()
 include(FetchContent)
 
 FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG v3.8.0
-    FIND_PACKAGE_ARGS
+    doctest
+    GIT_REPOSITORY https://github.com/doctest/doctest.git
+    GIT_TAG v2.5.3
 )
 
-FetchContent_MakeAvailable(Catch2)
+FetchContent_MakeAvailable(doctest)
 
 # --- Target ----------------------------------------------------------
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS *.cpp)
@@ -27,7 +26,7 @@ add_executable(parsley_tests ${TEST_SOURCES})
 target_link_libraries(parsley_tests
     PRIVATE
         parsley
-        Catch2::Catch2WithMain
+        doctest::doctest_with_main
 )
 
 set_target_properties(parsley_tests PROPERTIES
@@ -37,8 +36,8 @@ set_target_properties(parsley_tests PROPERTIES
 )
 
 # --- Test discovery ----------------------------------------------------
-include(Catch)
-catch_discover_tests(parsley_tests)
+include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
+doctest_discover_tests(parsley_tests)
 
 # --- Export Compile Commands --------------------------------------------
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
@@ -53,7 +52,7 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
 
     # clangd guesses compile flags for headers (nothing compiles a .h directly)
     # by picking a similar-looking .cpp from compile_commands.json. With vendored
-    # deps in _deps/ (e.g. Catch2), it can guess a vendor file instead of our own
+    # deps in _deps/ (e.g. doctest), it can guess a vendor file instead of our own
     # test .cpp files, causing errors on code that actually compiles fine.
     # Fix: strip _deps/ entries so it can only match our own files.
     add_custom_target(prune-compile-commands ALL
