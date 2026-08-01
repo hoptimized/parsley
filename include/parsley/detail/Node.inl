@@ -86,7 +86,7 @@ namespace parsley
         return *const_cast<Node*>(this)->get_collection_node(key, /*allow_insert=*/false);
     }
 
-    Node::Iterator Node::begin()
+    inline Node::Iterator Node::begin()
     {
         if (is_list())
             return { NodeType::List, storage_.get<detail::ListStorage>().values.begin(), {} };
@@ -97,7 +97,7 @@ namespace parsley
         return { type(), {}, {} };
     }
 
-    Node::Iterator Node::end()
+    inline Node::Iterator Node::end()
     {
         if (is_list())
             return { NodeType::List, storage_.get<detail::ListStorage>().values.end(), {} };
@@ -108,22 +108,22 @@ namespace parsley
         return { type(), {}, {} };
     }
 
-    Node::ConstIterator Node::begin() const
+    inline Node::ConstIterator Node::begin() const
     {
         return const_cast<Node*>(this)->begin();
     }
 
-    Node::ConstIterator Node::end() const
+    inline Node::ConstIterator Node::end() const
     {
         return const_cast<Node*>(this)->end();
     }
 
-    Node::ConstIterator Node::cbegin() const
+    inline Node::ConstIterator Node::cbegin() const
     {
         return begin();
     }
 
-    Node::ConstIterator Node::cend() const
+    inline Node::ConstIterator Node::cend() const
     {
         return end();
     }
