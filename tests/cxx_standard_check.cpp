@@ -4,6 +4,7 @@
 #  define CXX_STANDARD __cplusplus
 #endif
 
-#if CXX_STANDARD != PARSLEY_TESTS_CXX_STANDARD
-#error "Compiler standard does not match PARSLEY_TESTS_CXX_STANDARD"
-#endif
+static_assert(
+    CXX_STANDARD == PARSLEY_TESTS_CXX_STANDARD,
+    "Compiler C++ standard does not match PARSLEY_TESTS_CXX_STANDARD"
+);
