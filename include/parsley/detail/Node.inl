@@ -4,6 +4,7 @@
 #include "parsley/Node.h"
 
 #include "parsley/Transfer.h"
+#include "parsley/detail/util.h"
 
 #include <stdexcept>
 #include <type_traits>
@@ -20,13 +21,13 @@ namespace parsley
     template <typename T, typename>
     inline Node::Node(T&& val)
     {
-        Transfer<std::decay_t<T>>::write(*this, std::forward<T>(val));
+        Transfer<decay_t<T>>::write(*this, std::forward<T>(val));
     }
 
     template <typename T>
     inline Node& Node::operator=(T&& val)
     {
-        Transfer<std::decay_t<T>>::write(*this, std::forward<T>(val));
+        Transfer<decay_t<T>>::write(*this, std::forward<T>(val));
         return *this;
     }
 
@@ -50,7 +51,7 @@ namespace parsley
             }
         }
         
-        auto child = std::make_unique<Node>();
+        auto child = make_unique<Node>();
         *child = std::forward<T>(val);
 
         auto& values = storage_.get<ListStorage>().values;
@@ -232,7 +233,7 @@ namespace parsley
         // Index is bounds+1, try insert new node
         if (idx == values.size() && allow_insert) 
         {
-            values.emplace_back(std::make_unique<Node>());
+            values.emplace_back(make_unique<Node>());
             return values.back().get();
         }
 
@@ -284,7 +285,7 @@ namespace parsley
             if (allow_insert)
             {
                 auto& kvps = storage_.get<MapStorage>().kvps;
-                kvps.emplace_back(std::make_pair(key, std::make_unique<Node>()));
+                kvps.emplace_back(std::make_pair(key, make_unique<Node>()));
                 return kvps.back().second.get();
             }
 
