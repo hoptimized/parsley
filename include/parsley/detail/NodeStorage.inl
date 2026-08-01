@@ -18,13 +18,13 @@ namespace parsley
         template <> struct NodeTypeOf<ListStorage> { static constexpr NodeType value = NodeType::List; };
         template <> struct NodeTypeOf<MapStorage> { static constexpr NodeType value = NodeType::Map; };
 
-        ListStorage::~ListStorage() = default;
-        ListStorage::ListStorage(ListStorage&&) noexcept = default;
-        ListStorage& ListStorage::operator=(ListStorage&&) noexcept = default;
+        inline ListStorage::~ListStorage() = default;
+        inline ListStorage::ListStorage(ListStorage&&) noexcept = default;
+        inline ListStorage& ListStorage::operator=(ListStorage&&) noexcept = default;
 
-        MapStorage::~MapStorage() = default;
-        MapStorage::MapStorage(MapStorage&&) noexcept = default;
-        MapStorage& MapStorage::operator=(MapStorage&&) noexcept = default;
+        inline MapStorage::~MapStorage() = default;
+        inline MapStorage::MapStorage(MapStorage&&) noexcept = default;
+        inline MapStorage& MapStorage::operator=(MapStorage&&) noexcept = default;
 
         inline NodeStorage::NodeStorage() : type_(NodeType::Null)
         {
