@@ -1,11 +1,12 @@
-#include <catch2/catch_test_macros.hpp>
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 #include <parsley/parsley.h>
 
 using namespace parsley;
 
 TEST_CASE("Node - construction and assignment")
 {
-    SECTION("construct from scalar types")
+    SUBCASE("construct from scalar types")
     {
         Node n;
         REQUIRE(n.is_null());
@@ -28,7 +29,7 @@ TEST_CASE("Node - construction and assignment")
     }
 
     // TODO: move this to a transfer test unit
-    SECTION("construct from vector")
+    SUBCASE("construct from vector")
     {
         Node node = std::vector<int>{1, 3, 3, 7};
 
@@ -41,7 +42,7 @@ TEST_CASE("Node - construction and assignment")
         REQUIRE(node[3].as<int>() == 7);
     }
 
-    SECTION("assignment overwrites existing value")
+    SUBCASE("assignment overwrites existing value")
     {
         Node node = "hello";
         node = "world";
@@ -51,7 +52,7 @@ TEST_CASE("Node - construction and assignment")
         REQUIRE(node.as<int>() == 42);
     }
 
-    SECTION("assignment replaces structure entirely, not merges")
+    SUBCASE("assignment replaces structure entirely, not merges")
     {
         Node node;
         node["foo"] = 1;
@@ -63,7 +64,7 @@ TEST_CASE("Node - construction and assignment")
         REQUIRE(node.as<int>() == 99);
     }
 
-    SECTION("move construction and move assignment")
+    SUBCASE("move construction and move assignment")
     {
         Node node;
         node["foo"] = 1;
@@ -79,7 +80,7 @@ TEST_CASE("Node - construction and assignment")
 
 TEST_CASE("Node - operator[]")
 {
-    SECTION("null: failed access leaves node untouched (skip-index case)")
+    SUBCASE("null: failed access leaves node untouched (skip-index case)")
     {
         Node node;
 
@@ -87,7 +88,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node.is_null());
     }
 
-    SECTION("scalar: cannot be indexed")
+    SUBCASE("scalar: cannot be indexed")
     {
         Node node = 42;
 
@@ -98,7 +99,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node.as<int>() == 42);
     }
 
-    SECTION("scalar (const): cannot be indexed")
+    SUBCASE("scalar (const): cannot be indexed")
     {
         Node node = 42;
         const Node& cnode = node;
@@ -110,7 +111,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node.as<int>() == 42);
     }
 
-    SECTION("list: access existing element")
+    SUBCASE("list: access existing element")
     {
         Node node;
         node.push_back(10);
@@ -120,7 +121,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node[1].as<int>() == 20);
     }
 
-    SECTION("list: index at size() inserts a new element")
+    SUBCASE("list: index at size() inserts a new element")
     {
         Node node;
         node.push_back(10);
@@ -131,7 +132,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node[1].as<int>() == 20);
     }
 
-    SECTION("list: index beyond size() throws and does not mutate")
+    SUBCASE("list: index beyond size() throws and does not mutate")
     {
         Node node;
         node.push_back(10);
@@ -140,7 +141,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node.size() == 1);
     }
 
-    SECTION("list: negative index throws")
+    SUBCASE("list: negative index throws")
     {
         Node node;
         node.push_back(10);
@@ -148,7 +149,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE_THROWS_AS(node[-1], std::runtime_error);
     }
 
-    SECTION("map: access existing key")
+    SUBCASE("map: access existing key")
     {
         Node node;
         node["foo"] = 1;
@@ -156,7 +157,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node["foo"].as<int>() == 1);
     }
 
-    SECTION("map: access missing key inserts a new element")
+    SUBCASE("map: access missing key inserts a new element")
     {
         Node node;
         node["foo"] = 1;
@@ -166,7 +167,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node["bar"].as<int>() == 2);
     }
 
-    SECTION("map: reassigning an existing key overwrites, does not duplicate")
+    SUBCASE("map: reassigning an existing key overwrites, does not duplicate")
     {
         Node node;
         node["version"] = 1;
@@ -176,7 +177,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node["version"].as<int>() == 2);
     }
 
-    SECTION("map: cannot be accessed by integral key")
+    SUBCASE("map: cannot be accessed by integral key")
     {
         Node node;
         node["foo"] = 1;
@@ -184,7 +185,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE_THROWS_AS(node[0], std::runtime_error);
     }
 
-    SECTION("conversion: null converts to list on integral access")
+    SUBCASE("conversion: null converts to list on integral access")
     {
         Node node;
         node[0] = 1;
@@ -194,7 +195,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node[0].as<int>() == 1);
     }
 
-    SECTION("conversion: null converts to map on string access")
+    SUBCASE("conversion: null converts to map on string access")
     {
         Node node;
         node["foo"] = 1;
@@ -204,7 +205,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node["foo"].as<int>() == 1);
     }
 
-    SECTION("conversion: list converts to map on string access, preserving old values under stringified indices")
+    SUBCASE("conversion: list converts to map on string access, preserving old values under stringified indices")
     {
         Node node;
         node.push_back(1);
@@ -219,7 +220,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node["foo"].as<int>() == 3);
     }
 
-    SECTION("list (const): access existing list element")
+    SUBCASE("list (const): access existing list element")
     {
         Node node;
         node.push_back(10);
@@ -230,7 +231,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(cnode[1].as<int>() == 20);
     }
 
-    SECTION("list (const): access out-of-range index throws and does not mutate")
+    SUBCASE("list (const): access out-of-range index throws and does not mutate")
     {
         Node node;
         node.push_back(10);
@@ -242,7 +243,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node[0].as<int>() == 10);
     }
     
-    SECTION("list (const): string key on a list throws and does not convert it to a map")
+    SUBCASE("list (const): string key on a list throws and does not convert it to a map")
     {
         Node node;
         node.push_back(1);
@@ -256,7 +257,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node[1].as<int>() == 2);
     }
 
-    SECTION("map (const): access existing map key")
+    SUBCASE("map (const): access existing map key")
     {
         Node node;
         node["foo"] = 1;
@@ -265,7 +266,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(cnode["foo"].as<int>() == 1);
     }
 
-    SECTION("map (const): access missing key throws and does not mutate")
+    SUBCASE("map (const): access missing key throws and does not mutate")
     {
         Node node;
         node["foo"] = 1;
@@ -276,7 +277,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node["foo"].as<int>() == 1);
     }
 
-    SECTION("map (const): cannot be accessed by integral key")
+    SUBCASE("map (const): cannot be accessed by integral key")
     {
         Node node;
         node["foo"] = 1;
@@ -288,7 +289,7 @@ TEST_CASE("Node - operator[]")
         REQUIRE(node["foo"].as<int>() == 1);
     }
 
-    SECTION("null (const): access on null node throws and does not convert it")
+    SUBCASE("null (const): access on null node throws and does not convert it")
     {
         Node node;
         const Node& cnode = node;
@@ -303,7 +304,7 @@ TEST_CASE("Node - operator[]")
 
 TEST_CASE("Node - chained / nested access")
 {
-    SECTION("nested map access via chained operator[]")
+    SUBCASE("nested map access via chained operator[]")
     {
         Node node;
 
@@ -314,7 +315,7 @@ TEST_CASE("Node - chained / nested access")
         REQUIRE(node["database"]["port"].as<int>() == 5432);
     }
 
-    SECTION("mixed list and map access via chained operator[]")
+    SUBCASE("mixed list and map access via chained operator[]")
     {
         Node node;
 
@@ -331,7 +332,7 @@ TEST_CASE("Node - chained / nested access")
         REQUIRE(node["users"][1]["age"].as<int>() == 25);
     }
 
-    SECTION("nested chained access via const reference")
+    SUBCASE("nested chained access via const reference")
     {
         Node node;
         node["users"][0]["name"] = "Alice";
@@ -344,7 +345,7 @@ TEST_CASE("Node - chained / nested access")
 
 TEST_CASE("Node - push_back")
 {
-    SECTION("push_back onto null converts to list")
+    SUBCASE("push_back onto null converts to list")
     {
         Node node;
         node.push_back(10);
@@ -354,7 +355,7 @@ TEST_CASE("Node - push_back")
         REQUIRE(node[0].as<int>() == 10);
     }
 
-    SECTION("push_back onto existing list appends")
+    SUBCASE("push_back onto existing list appends")
     {
         Node node;
         node.push_back(10);
@@ -368,13 +369,13 @@ TEST_CASE("Node - push_back")
         REQUIRE(node[2].as<int>() == 30);
     }
 
-    SECTION("push_back onto scalar throws")
+    SUBCASE("push_back onto scalar throws")
     {
         Node node = 42;
         REQUIRE_THROWS_AS(node.push_back(1), std::runtime_error);
     }
 
-    SECTION("push_back onto map throws")
+    SUBCASE("push_back onto map throws")
     {
         Node node;
         node["foo"] = 1;
@@ -384,7 +385,7 @@ TEST_CASE("Node - push_back")
 
 TEST_CASE("Node - clear")
 {
-    SECTION("clear resets list to null")
+    SUBCASE("clear resets list to null")
     {
         Node node;
         node.push_back(1);
@@ -395,7 +396,7 @@ TEST_CASE("Node - clear")
         REQUIRE(node.is_null());
     }
 
-    SECTION("clear resets map to null")
+    SUBCASE("clear resets map to null")
     {
         Node node;
         node["foo"] = 1;
@@ -405,7 +406,7 @@ TEST_CASE("Node - clear")
         REQUIRE(node.is_null());
     }
 
-    SECTION("clear resets scalar to null")
+    SUBCASE("clear resets scalar to null")
     {
         Node node = 42;
 
@@ -414,7 +415,7 @@ TEST_CASE("Node - clear")
         REQUIRE(node.is_null());
     }
 
-    SECTION("clear on already-null node is a no-op")
+    SUBCASE("clear on already-null node is a no-op")
     {
         Node node;
 
@@ -426,7 +427,7 @@ TEST_CASE("Node - clear")
 
 TEST_CASE("Node - identity")
 {
-    SECTION("default-constructed node is null")
+    SUBCASE("default-constructed node is null")
     {
         Node node;
 
@@ -436,7 +437,7 @@ TEST_CASE("Node - identity")
         REQUIRE_FALSE(node.is_map());
     }
 
-    SECTION("scalar node reports is_scalar only")
+    SUBCASE("scalar node reports is_scalar only")
     {
         Node node = 42;
 
@@ -446,7 +447,7 @@ TEST_CASE("Node - identity")
         REQUIRE_FALSE(node.is_map());
     }
 
-    SECTION("list node reports is_list only")
+    SUBCASE("list node reports is_list only")
     {
         Node node;
         node.push_back(1);
@@ -457,7 +458,7 @@ TEST_CASE("Node - identity")
         REQUIRE_FALSE(node.is_map());
     }
 
-    SECTION("map node reports is_map only")
+    SUBCASE("map node reports is_map only")
     {
         Node node;
         node["foo"] = 1;
@@ -468,7 +469,7 @@ TEST_CASE("Node - identity")
         REQUIRE_FALSE(node.is_list());
     }
 
-    SECTION("type() returns the correct enum value")
+    SUBCASE("type() returns the correct enum value")
     {
         Node n;
         REQUIRE(n.type() == NodeType::Null);
@@ -484,7 +485,7 @@ TEST_CASE("Node - identity")
         REQUIRE(m.type() == NodeType::Map);
     }
 
-    SECTION("is() correctly identifies node type")
+    SUBCASE("is() correctly identifies node type")
     {
         Node n;
         REQUIRE(n.is(NodeType::Null));
@@ -515,7 +516,7 @@ TEST_CASE("Node - identity")
 
 TEST_CASE("Node - capacity")
 {
-    SECTION("null node has size 0 and is empty")
+    SUBCASE("null node has size 0 and is empty")
     {
         Node node;
 
@@ -523,7 +524,7 @@ TEST_CASE("Node - capacity")
         REQUIRE(node.empty());
     }
 
-    SECTION("scalar node has size 1 and is not empty")
+    SUBCASE("scalar node has size 1 and is not empty")
     {
         Node node = 42;
 
@@ -531,7 +532,7 @@ TEST_CASE("Node - capacity")
         REQUIRE_FALSE(node.empty());
     }
 
-    SECTION("list size reflects element count")
+    SUBCASE("list size reflects element count")
     {
         Node node;
         REQUIRE(node.empty());
@@ -543,7 +544,7 @@ TEST_CASE("Node - capacity")
         REQUIRE_FALSE(node.empty());
     }
 
-    SECTION("map size reflects key count")
+    SUBCASE("map size reflects key count")
     {
         Node node;
         node["a"] = 1;
@@ -557,7 +558,7 @@ TEST_CASE("Node - capacity")
 
 TEST_CASE("Node - as<T>()")
 {
-    SECTION("round-trip scalar types")
+    SUBCASE("round-trip scalar types")
     {
         Node s = "hello";
         REQUIRE(s.as<std::string>() == "hello");
@@ -572,7 +573,7 @@ TEST_CASE("Node - as<T>()")
         REQUIRE(b.as<bool>() == false);
     }
 
-    SECTION("round-trip std::vector<int>")
+    SUBCASE("round-trip std::vector<int>")
     {
         Node node = std::vector<int>{1, 3, 3, 7};
 
@@ -581,7 +582,7 @@ TEST_CASE("Node - as<T>()")
         REQUIRE(values == std::vector<int>{1, 3, 3, 7});
     }
 
-    SECTION("round-trip empty vector")
+    SUBCASE("round-trip empty vector")
     {
         Node node = std::vector<int>{};
 
@@ -590,7 +591,7 @@ TEST_CASE("Node - as<T>()")
         REQUIRE(values.empty());
     }
 
-    SECTION("as<T>() on scalar node without matching Transfer falls back to stream extraction")
+    SUBCASE("as<T>() on scalar node without matching Transfer falls back to stream extraction")
     {
         Node node = "42";
 
@@ -600,7 +601,7 @@ TEST_CASE("Node - as<T>()")
 
 TEST_CASE("Node - iteration")
 {
-    SECTION("list - iteration works")
+    SUBCASE("list - iteration works")
     {
         Node list = std::vector<int>{ 1, 3, 3, 7 };
 
@@ -611,7 +612,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(seen == std::vector<int>{1, 3, 3, 7});
     }
 
-    SECTION("list - empty list produces no iterations")
+    SUBCASE("list - empty list produces no iterations")
     {
         Node list = std::vector<int>{};
         int count = 0;
@@ -619,7 +620,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(count == 0);
     }
 
-    SECTION("list - mutation through iterator is visible")
+    SUBCASE("list - mutation through iterator is visible")
     {
         Node list = std::vector<int>{ 1, 2, 3 };
         for (auto entry : list)
@@ -632,7 +633,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(seen == std::vector<int>{11, 12, 13});
     }
 
-    SECTION("list - key is empty for list entries")
+    SUBCASE("list - key is empty for list entries")
     {
         Node list = std::vector<int>{ 42 };
 
@@ -640,7 +641,7 @@ TEST_CASE("Node - iteration")
             REQUIRE(entry.key.empty());
     }
 
-    SECTION("map - iteration works")
+    SUBCASE("map - iteration works")
     {
         Node map;
         map["foo"] = 1;
@@ -656,7 +657,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(seen[1].second == 2);
     }
 
-    SECTION("map - empty map produces no iterations")
+    SUBCASE("map - empty map produces no iterations")
     {
         Node map;
         int count = 0;
@@ -664,7 +665,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(count == 0);
     }
 
-    SECTION("map - mutation through iterator is visible")
+    SUBCASE("map - mutation through iterator is visible")
     {
         Node map;
         map["foo"] = 1;
@@ -677,7 +678,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(map["bar"].as<int>() == 200);
     }
 
-    SECTION("const - const iteration works")
+    SUBCASE("const - const iteration works")
     {
         const Node list = std::vector<int>{ 5, 6 };
         int sum = 0;
@@ -688,21 +689,21 @@ TEST_CASE("Node - iteration")
         REQUIRE(sum == 11);
     }
 
-    SECTION("const - begin()/end() on const Node yield ConstIterator")
+    SUBCASE("const - begin()/end() on const Node yield ConstIterator")
     {
         const Node list = std::vector<int>{ 1, 2 };
         static_assert(std::is_same<decltype(list.begin()), Node::ConstIterator>::value, "");
         static_assert(std::is_same<decltype(list.end()), Node::ConstIterator>::value, "");
     }
 
-    SECTION("const - cbegin()/cend() yield ConstIterator even on non-const Node")
+    SUBCASE("const - cbegin()/cend() yield ConstIterator even on non-const Node")
     {
         Node list = std::vector<int>{ 1, 2 };
         static_assert(std::is_same<decltype(list.cbegin()), Node::ConstIterator>::value, "");
         static_assert(std::is_same<decltype(list.cend()), Node::ConstIterator>::value, "");
     }
 
-    SECTION("Iterator - Iterator converts implicitly to ConstIterator")
+    SUBCASE("Iterator - Iterator converts implicitly to ConstIterator")
     {
         Node list = std::vector<int>{ 1, 2 };
         Node::Iterator it = list.begin();
@@ -710,7 +711,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(cit->as<int>() == 1);
     }
 
-    SECTION("Iterator - comparison works in both directions between Iterator and ConstIterator")
+    SUBCASE("Iterator - comparison works in both directions between Iterator and ConstIterator")
     {
         Node list = std::vector<int>{ 1, 2, 3 };
 
@@ -725,7 +726,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(cit != it);
     }
 
-    SECTION("Iterator - mutable iterator compares equal to const end()")
+    SUBCASE("Iterator - mutable iterator compares equal to const end()")
     {
         Node list = std::vector<int>{ 1 };
         auto it = list.begin();
@@ -735,7 +736,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(list.cend() == it);
     }
 
-    SECTION("Iterator - comparison across maps works")
+    SUBCASE("Iterator - comparison across maps works")
     {
         Node map;
         map["a"] = 1;
@@ -749,7 +750,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(it == map.cend());
     }
 
-    SECTION("Iterator - arrow operator")
+    SUBCASE("Iterator - arrow operator")
     {
         Node list = std::vector<int>{ 5, 6 };
         
@@ -763,7 +764,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(it == list.end());
     }
 
-    SECTION("Iterator - arrow operator on const iterator")
+    SUBCASE("Iterator - arrow operator on const iterator")
     {
         const Node list = std::vector<int>{ 5, 6 };
 
@@ -777,7 +778,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(it == list.end());
     }
 
-    SECTION("Iterator - postfix increment returns pre-increment position")
+    SUBCASE("Iterator - postfix increment returns pre-increment position")
     {
         Node list = std::vector<int>{ 1, 2, 3 };
 
@@ -788,7 +789,7 @@ TEST_CASE("Node - iteration")
         REQUIRE(it->as<int>() == 2);
     }
 
-    SECTION("Entry - exposes Node interface")
+    SUBCASE("Entry - exposes Node interface")
     {
         Node map;
         map["foo"] = 1;
@@ -804,32 +805,32 @@ TEST_CASE("Node - iteration")
         }
     }
 
-    SECTION("Entry - ConstEntry is not assignable")
+    SUBCASE("Entry - ConstEntry is not assignable")
     {
         static_assert(!std::is_assignable<Node::ConstEntry&, int>::value,
             "ConstEntry should not support operator= to prevent mutation through const iteration");
     }
 
-    SECTION("Entry - mutable Entry is assignable")
+    SUBCASE("Entry - mutable Entry is assignable")
     {
         static_assert(std::is_assignable<Node::Entry&, int>::value,
             "Entry should support operator= for mutation through non-const iteration");
     }
 
-    SECTION("Entry - Entry converts implicitly to ConstEntry, not vice versa")
+    SUBCASE("Entry - Entry converts implicitly to ConstEntry, not vice versa")
     {
         static_assert(std::is_convertible<Node::Entry, Node::ConstEntry>::value, "");
         static_assert(!std::is_convertible<Node::ConstEntry, Node::Entry>::value, "");
     }
 
-    SECTION("Entry - dereferencing a const iterator yields read-only access")
+    SUBCASE("Entry - dereferencing a const iterator yields read-only access")
     {
         const Node list = std::vector<int>{ 9 };
         static_assert(std::is_same<decltype(*list.begin()), Node::ConstEntry>::value, "");
         static_assert(std::is_same<decltype(*list.end()), Node::ConstEntry>::value, "");
     }
 
-    SECTION("Entry - copying a ConstEntry preserves read-only value reference")
+    SUBCASE("Entry - copying a ConstEntry preserves read-only value reference")
     {
         Node list = std::vector<int>{ 9 };
         auto cit = list.cbegin();
@@ -841,7 +842,7 @@ TEST_CASE("Node - iteration")
 
 TEST_CASE("Node - low-level scalar access")
 {
-    SECTION("set_scalar / get_scalar round-trip")
+    SUBCASE("set_scalar / get_scalar round-trip")
     {
         Node node;
         node.set_scalar("raw value");
@@ -850,7 +851,7 @@ TEST_CASE("Node - low-level scalar access")
         REQUIRE(node.is_scalar());
     }
 
-    SECTION("get_scalar on non-scalar node throws")
+    SUBCASE("get_scalar on non-scalar node throws")
     {
         Node node;
         REQUIRE_THROWS_AS(node.get_scalar(), std::runtime_error);

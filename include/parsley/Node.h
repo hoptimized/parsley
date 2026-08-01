@@ -135,7 +135,7 @@ namespace parsley
         Node(Node&&);
         Node& operator=(Node&&);
 
-        template <typename T, typename = std::enable_if_t<!detail::is_same_v<std::decay_t<T>, Node>>>
+        template <typename T, typename = enable_if_t<!std::is_same<decay_t<T>, Node>::value>>
         Node(T&& val);
 
         template <typename T> Node& operator=(T&& val);
@@ -208,7 +208,7 @@ namespace parsley
         // Converting constructor: lets Entry convert to ConstEntry
         template<
             typename OtherNodeRef,
-            typename = std::enable_if_t<std::is_convertible<OtherNodeRef, NodeRef>::value>>
+            typename = enable_if_t<std::is_convertible<OtherNodeRef, NodeRef>::value>>
         EntryBase(const EntryBase<OtherNodeRef>& other);
 
         template <typename T> T as() const;
@@ -228,7 +228,7 @@ namespace parsley
         using difference_type = std::ptrdiff_t;
         using pointer = void;
         using reference = Entry;
-#if __cplusplus >= 202002L
+#if defined(__cpp_lib_ranges)
         using iterator_concept = std::forward_iterator_tag;
 #endif
 
@@ -239,7 +239,7 @@ namespace parsley
             typename OtherListIter,
             typename OtherMapIter, 
             typename OtherEntryT,
-            typename = std::enable_if_t<
+            typename = enable_if_t<
                 std::is_convertible<OtherListIter, ListIter>::value &&
                 std::is_convertible<OtherMapIter, MapIter>::value &&
                 std::is_convertible<OtherEntryT, EntryT>::value>>
