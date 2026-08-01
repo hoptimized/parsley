@@ -10,6 +10,7 @@ namespace parsley
         using CharT = char;
 
     public:
+        StringView() : ptr_(nullptr), len_(0) {}
         StringView(const CharT* str) : ptr_(str), len_(std::strlen(str)) {}
         StringView(const std::string& str) : ptr_(str.data()), len_(str.size()) {}        
 
@@ -20,6 +21,7 @@ namespace parsley
 
         const char* data() const { return ptr_; }
         size_t size() const { return len_; }
+        bool empty() const { return len_ == 0; }
 
         bool operator==(const std::string& str) const
         {

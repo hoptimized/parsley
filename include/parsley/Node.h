@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace parsley
@@ -103,16 +104,38 @@ namespace parsley
     class Node
     {
     public:
+        //-------------------------------------------------------------------------------------------------
+        // Nested Types
+
+        template <typename NodeRef>
+        class EntryBase;
+
+        using Entry = EntryBase<Node&>;
+        using ConstEntry = EntryBase<const Node&>;
+
+        template<typename ListIter, typename MapIter, typename EntryT> 
+        class IteratorBase;
+
+        using Iterator = IteratorBase<
+            std::vector<std::unique_ptr<Node>>::iterator,
+            std::vector<std::pair<std::string, std::unique_ptr<Node>>>::iterator,
+            Entry>;
+
+        using ConstIterator = IteratorBase<
+            std::vector<std::unique_ptr<Node>>::const_iterator,
+            std::vector<std::pair<std::string, std::unique_ptr<Node>>>::const_iterator,
+            ConstEntry>;
+            
+        //-------------------------------------------------------------------------------------------------
+        // Construction & Assignment
+
         Node();
         Node(const Node&) = delete;
         Node& operator=(const Node&) = delete;
         Node(Node&&);
         Node& operator=(Node&&);
 
-        //-------------------------------------------------------------------------------------------------
-        // Construction & Assignment
-
-        template <typename T, typename = std::enable_if_t<!is_same_v<std::decay_t<T>, Node>>>
+        template <typename T, typename = std::enable_if_t<!detail::is_same_v<std::decay_t<T>, Node>>>
         Node(T&& val);
 
         template <typename T> Node& operator=(T&& val);
@@ -131,6 +154,14 @@ namespace parsley
 
         template <typename T> Node& operator[](T key);
         template <typename T> const Node& operator[](T key) const;
+
+        Iterator begin();
+        Iterator end();
+
+        ConstIterator begin() const;
+        ConstIterator cbegin() const;
+        ConstIterator end() const;        
+        ConstIterator cend() const;
 
         //-------------------------------------------------------------------------------------------------
         // Identity
@@ -165,7 +196,84 @@ namespace parsley
 
         detail::NodeStorage storage_ = detail::NullStorage{};
     };
+
+    template <typename NodeRef>
+    struct Node::EntryBase
+    {
+        const StringView key;
+        NodeRef value;
+        
+        EntryBase(StringView key, NodeRef value);
+
+        // Converting constructor: lets Entry convert to ConstEntry
+        template<
+            typename OtherNodeRef,
+            typename = std::enable_if_t<std::is_convertible<OtherNodeRef, NodeRef>::value>>
+        EntryBase(const EntryBase<OtherNodeRef>& other);
+
+        template <typename T> T as() const;
+        
+        template <typename T, typename U = NodeRef, typename = detail::enable_if_mutable_t<U>>
+        EntryBase& operator=(T&& val);
+
+        // TODO: add missing Node methods
+    };
+
+    template<typename ListIter, typename MapIter, typename EntryT>
+    class Node::IteratorBase
+    {
+    public:
+        using iterator_category = std::input_iterator_tag;
+        using value_type = Entry;
+        using difference_type = std::ptrdiff_t;
+        using pointer = void;
+        using reference = Entry;
+#if __cplusplus >= 202002L
+        using iterator_concept = std::forward_iterator_tag;
+#endif
+
+        IteratorBase(NodeType type, ListIter list_it, MapIter map_it);
+
+        // Converting constructor: lets Iterator convert to ConstIterator
+        template<
+            typename OtherListIter,
+            typename OtherMapIter, 
+            typename OtherEntryT,
+            typename = std::enable_if_t<
+                std::is_convertible<OtherListIter, ListIter>::value &&
+                std::is_convertible<OtherMapIter, MapIter>::value &&
+                std::is_convertible<OtherEntryT, EntryT>::value>>
+        IteratorBase(const IteratorBase<OtherListIter, OtherMapIter, OtherEntryT>& other);
+
+        EntryT operator*() const;
+
+        struct ArrowProxy
+        {
+            EntryT entry;
+            EntryT* operator->() { return &entry; }
+        };
+        ArrowProxy operator->() const { return ArrowProxy{**this}; }
+
+        IteratorBase& operator++();
+        IteratorBase operator++(int);
+
+        template<typename OtherListIter, typename OtherMapIter, typename OtherEntryT>
+        bool operator==(const IteratorBase<OtherListIter, OtherMapIter, OtherEntryT>& other) const;
+
+        template<typename OtherListIter, typename OtherMapIter, typename OtherEntryT>
+        bool operator!=(const IteratorBase<OtherListIter, OtherMapIter, OtherEntryT>& other) const;
+
+    private:
+        NodeType type_;
+        ListIter list_it_;
+        MapIter map_it_;
+
+        // Give conversion constructor access to internals
+        template<typename, typename, typename> friend class Node::IteratorBase;
+    };
 }
 
 #include "parsley/detail/Node.inl"
+#include "parsley/detail/NodeEntry.inl"
+#include "parsley/detail/NodeIterator.inl"
 #include "parsley/detail/NodeStorage.inl"
