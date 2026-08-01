@@ -228,7 +228,7 @@ namespace parsley
         using difference_type = std::ptrdiff_t;
         using pointer = void;
         using reference = Entry;
-#if __cplusplus >= 202002L
+#if defined(__cpp_lib_ranges)
         using iterator_concept = std::forward_iterator_tag;
 #endif
 

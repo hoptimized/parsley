@@ -35,26 +35,6 @@ set_target_properties(parsley_tests PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
-# --- Verify CXX Standard ------------------------------------------------
-
-if(PARSLEY_TESTS_CXX_STANDARD EQUAL 11)
-    set(PARSLEY_TESTS_CXX_STANDARD_LONG 201103L)
-elseif(PARSLEY_TESTS_CXX_STANDARD EQUAL 14)
-    set(PARSLEY_TESTS_CXX_STANDARD_LONG 201402L)
-elseif(PARSLEY_TESTS_CXX_STANDARD EQUAL 17)
-    set(PARSLEY_TESTS_CXX_STANDARD_LONG 201703L)
-elseif(PARSLEY_TESTS_CXX_STANDARD EQUAL 20)
-    set(PARSLEY_TESTS_CXX_STANDARD_LONG 202002L)
-elseif(PARSLEY_TESTS_CXX_STANDARD EQUAL 23)
-    set(PARSLEY_TESTS_CXX_STANDARD_LONG 202302L)
-else()
-    message(FATAL_ERROR "Unsupported C++ standard")
-endif()
-
-target_compile_definitions(parsley_tests PRIVATE
-    PARSLEY_TESTS_CXX_STANDARD=${PARSLEY_TESTS_CXX_STANDARD_LONG}
-)
-
 # --- Test discovery ----------------------------------------------------
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(parsley_tests)
