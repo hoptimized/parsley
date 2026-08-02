@@ -4,6 +4,7 @@
 #include "parsley/Transfer.h"
 
 #include "parsley/Node.h"
+#include "parsley/core/StringView.h"
 
 #include <sstream>
 #include <vector>
@@ -27,6 +28,53 @@ namespace parsley
         std::istringstream iss(node.get_scalar());
         iss >> val;
     }
+
+    //-----------------------------------------------------------------------------------------------------
+    // bool
+
+    template <>
+    struct Transfer<bool, void>
+    {
+        static void write(Node& node, const bool& val)
+        {
+            node.set_scalar(val ? "true" : "false");
+        }
+
+        static void read(const Node& node, bool& val)
+        {
+            auto& str = node.get_scalar();
+            
+            if (str == "true" || str == "on" || str == "1")
+            {
+                val = true;
+            }
+            else if (str == "false" || str == "off" || str == "0")
+            {
+                val = false;
+            }
+            else
+            {
+                throw std::runtime_error("Cannot cast to bool: \"" + str + "\"");
+            }
+        }
+    };
+
+    //-----------------------------------------------------------------------------------------------------
+    // StringView
+
+    template <>
+    struct Transfer<StringView, void>
+    {
+        static void write(Node& node, const StringView& val)
+        {
+            node.set_scalar(val);
+        }
+
+        static void read(const Node& node, StringView& val)
+        {
+            val = node.get_scalar();
+        }
+    };
 
     //-----------------------------------------------------------------------------------------------------
     // std::vector

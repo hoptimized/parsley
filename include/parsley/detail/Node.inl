@@ -156,6 +156,11 @@ namespace parsley
         return storage_.is<detail::MapStorage>();
     }
 
+    inline bool Node::is_collection() const
+    {
+        return is_list() || is_map();
+    }
+
     inline bool Node::is(NodeType type) const
     {
         return storage_.is(type);

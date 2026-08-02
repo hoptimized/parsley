@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <ostream>
 #include <string>
 
 namespace parsley
@@ -42,5 +43,10 @@ namespace parsley
             return false;
 
         return std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0;
+    }
+
+    inline std::ostream& operator<< (std::ostream& stream, StringView sv)
+    {
+        return stream.write(sv.data(), static_cast<std::streamsize>(sv.size()));
     }
 }

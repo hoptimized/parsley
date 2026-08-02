@@ -17,6 +17,12 @@ namespace parsley
     {}
 
     template <typename NodeRef>
+    Node::EntryBase<NodeRef>::operator NodeRef()
+    {
+        return value;
+    }
+
+    template <typename NodeRef>
     template <typename T, typename, typename>
     Node::EntryBase<NodeRef>& Node::EntryBase<NodeRef>::operator=(T&& val)
     {
