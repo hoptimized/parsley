@@ -1,7 +1,7 @@
 #pragma once
 
 #include "parsley/serialize/Format.h"
-#include "parsley/serialize/YamlSerializer.h"
+#include "parsley/serialize/Yaml.h"
 
 #include <stdexcept>
 #include <string>

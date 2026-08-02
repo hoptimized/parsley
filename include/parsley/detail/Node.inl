@@ -290,7 +290,7 @@ namespace parsley
             if (allow_insert)
             {
                 auto& kvps = storage_.get<MapStorage>().kvps;
-                kvps.emplace_back(std::make_pair(key, make_unique<Node>()));
+                kvps.emplace_back(std::make_pair(key.to_owned(), make_unique<Node>()));
                 return kvps.back().second.get();
             }
 

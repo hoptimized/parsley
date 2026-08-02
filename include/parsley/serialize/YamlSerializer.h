@@ -7,11 +7,6 @@ namespace parsley
     class YamlSerializer
     {
     public:
-        Node read(std::istream& in) const
-        {
-            return {};
-        }
-
         void write(const Node& node, std::ostream& out)
         {
             out_ = &out;
