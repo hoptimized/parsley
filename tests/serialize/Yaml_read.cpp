@@ -360,4 +360,22 @@ workers:
         REQUIRE(n["workers"][1]["retries"]["max"].as<uint8_t>() == 2);
         REQUIRE(n["workers"][1]["retries"]["delay"].as<uint8_t>() == 10);
     }
+
+    SUBCASE("deserialize - mixed newline characters")
+    {
+        Node n1 = parsley::read<YAML>("---\na: 1\r\nb: 2\rc: 3");
+        REQUIRE(n1.is_map());
+        REQUIRE(n1.size() == 3);
+        REQUIRE(n1["a"].as<int>() == 1);
+        REQUIRE(n1["b"].as<int>() == 2);
+        REQUIRE(n1["c"].as<int>() == 3);
+
+        std::istringstream stream { "---\na: 1\r\nb: 2\rc: 3" };
+        Node n2 = parsley::read<YAML>(stream);
+        REQUIRE(n2.is_map());
+        REQUIRE(n2.size() == 3);
+        REQUIRE(n2["a"].as<int>() == 1);
+        REQUIRE(n2["b"].as<int>() == 2);
+        REQUIRE(n2["c"].as<int>() == 3);
+    }
 }

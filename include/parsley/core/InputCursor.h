@@ -30,7 +30,7 @@ namespace parsley
             bool found_newline = false;
             while (pos_ < data_.size())
             {
-                if (data_[pos_] == '\n')
+                if (data_[pos_] == '\n' || data_[pos_] == '\r')
                 {
                     found_newline = true;
                     break;
@@ -40,9 +40,9 @@ namespace parsley
 
             line = data_.substr(start, pos_ - start);
 
-            // Consume '\n', excluded from the returned line
+            // Consume '\n' or '\r\n', excluded from the returned line
             if (found_newline)
-                ++pos_;
+                consume_newline();
 
             return found_newline || line.size() > 0;
         }
@@ -50,6 +50,13 @@ namespace parsley
         bool eof() const { return pos_ >= data_.size(); }
 
     private:
+        void consume_newline()
+        {
+            char new_line_char = data_[pos_++]; // consume '\n' or '\r'
+            if (new_line_char == '\r' && !eof() && data_[pos_] == '\n')
+                ++pos_; // consume second char of "\r\n"
+        }
+
         StringView data_;
         size_t pos_ = 0;
     };
@@ -96,8 +103,9 @@ namespace parsley
 
             // Advance the read window until we find a newline or fail to advance in the buffer.
             while (ensure_buffer())
-            { 
-                if (buffer_[pos_in_buffer(read_end_pos_)] == '\n')
+            {
+                char c = buffer_[pos_in_buffer(read_end_pos_)];
+                if (c == '\n' || c == '\r')
                 {
                     found_newline = true;
                     break;
@@ -111,9 +119,9 @@ namespace parsley
             size_t read_window_length = read_end_pos_ - read_start_pos_;
             line = StringView{ read_window_start, read_window_length };
 
-            // Consume '\n', excluded from the returned line
+            // Consume '\n' or '\r\n', excluded from the returned line
             if (found_newline)
-                ++read_end_pos_;
+                consume_newline();
 
             return found_newline || line.size() > 0;
         }
@@ -190,6 +198,15 @@ namespace parsley
 
             buffer_ = new_buffer;
             buffer_capacity_ = new_capacity;
+        }
+
+        void consume_newline()
+        {
+            // consume '\n' or '\r'
+            char c = buffer_[pos_in_buffer(read_end_pos_++)];
+
+            if (c == '\r' && get_char(c) && c != '\n') // consume the next char
+                --read_end_pos_; // next char wasn't part of a newline sequence, revert
         }
 
         size_t pos_in_buffer(size_t pos_in_stream)
