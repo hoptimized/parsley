@@ -6,6 +6,11 @@
 
 namespace parsley
 {
+    struct YamlDeserializerConfig
+    {
+    };
+
+    template <class Cursor>
     class YamlDeserializer
     {
         struct Frame
@@ -18,7 +23,9 @@ namespace parsley
         };
 
     public:
-        Node read(std::istream& in)
+        YamlDeserializer(YamlDeserializerConfig config = {}) {}
+
+        Node read(Cursor& in)
         {
             // TODO:
             //  - inline comments (e.g. `a: b # comment`)
@@ -28,13 +35,11 @@ namespace parsley
             //  - anchors/aliases
             //  - block scalars (|, >)
 
-            in_ = &in;
-
             std::stack<Frame> frames;
             frames.push({ 0, false, false, {}, Node{} }); // root frame
 
             // Read the input line by line.
-            for (std::string line; std::getline(*in_, line);)
+            for (StringView line; in.get_line(line);)
             {
                 size_t indent = get_indent(line);
                 StringView content = StringView{ line }.substr(indent);
@@ -147,12 +152,11 @@ namespace parsley
             // Resolve the root node (e.g. root sequence of `null`)
             resolve_pending(frames.top());
 
-            in_ = nullptr;
             return std::move(frames.top().node);
         }
 
     private:
-        static size_t get_indent(const std::string& line)
+        static size_t get_indent(StringView line)
         {
             std::size_t indent = 0;
             while (indent < line.size() && line[indent] == ' ')
@@ -236,7 +240,5 @@ namespace parsley
                 parent.node.push_back(std::move(finished.node));
             }
         }
-
-        std::istream* in_;
     };
 }

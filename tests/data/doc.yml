@@ -1,0 +1,29 @@
+---
+name: demo-app
+version: 1.0
+server:
+  host: localhost
+  ports:
+    - 8080
+    - 8081
+  tls:
+    enabled: true
+    cert: server.pem
+database:
+  engine: postgres
+  connection:
+    host: db.local
+    user: app
+    options:
+      pool_size: 10
+workers:
+  - name: ingest
+    queue: events
+    retries:
+      max: 3
+      delay: 5
+  - name: cleanup
+    queue: jobs
+    retries:
+      max: 2
+      delay: 10

@@ -4,12 +4,28 @@
 
 namespace parsley
 {
+    enum class LineEnding
+    {
+        LF,
+        CRLF
+    };
+
+    struct YamlSerializerConfig
+    {
+        LineEnding line_endings = LineEnding::LF;
+    };
+
+    template <class Cursor>
     class YamlSerializer
     {
     public:
-        void write(const Node& node, std::ostream& out)
+        YamlSerializer(YamlSerializerConfig config = {}) : 
+            config_(std::move(config)) 
+        {}
+
+        void write(const Node& node, Cursor& cursor)
         {
-            out_ = &out;
+            out_ = &cursor;
             indent_ = 0;
             
             write_start_marker();            
@@ -45,10 +61,10 @@ namespace parsley
         void write_scalar(const Node& node, bool is_root)
         {
             write_indent_if_needed();
-            *out_ << node.as<StringView>();
+            out_->write(node.as<StringView>());
             
             if (is_root)
-                *out_ << '\n';
+                write_newline();
         }
 
         void write_list(const Node& node)
@@ -56,7 +72,7 @@ namespace parsley
             for (auto entry: node)
             {
                 write_indent_if_needed();
-                *out_ << "- ";
+                out_->write("- ");
                 at_line_start_ = false; // dash already covers this line's "indent"
 
                 write_node(entry, false);
@@ -71,7 +87,8 @@ namespace parsley
             for (auto kvp: node)
             {
                 write_indent_if_needed();
-                *out_ << kvp.key << ":";
+                out_->write(kvp.key);
+                out_->write(":");
 
                 if (kvp.value.is_collection())
                 {
@@ -79,7 +96,7 @@ namespace parsley
                 }
                 else
                 {
-                    *out_ << ' '; // space already covers this line's "indent"
+                    out_->write(" "); // space already covers this line's "indent"
                     at_line_start_ = false;
                 }
 
@@ -92,8 +109,8 @@ namespace parsley
 
         void write_start_marker()
         {
-            *out_ << "---\n";
-            at_line_start_ = true;
+            out_->write("---");
+            write_newline();
         }
 
         void write_indent_if_needed()
@@ -105,7 +122,7 @@ namespace parsley
             if (at_line_start_)
             {
                 for (size_t i = 0; i < indent_ * 2; ++i)
-                    *out_ << ' ';
+                    out_->write(" ");
 
                 at_line_start_ = false;
             }
@@ -113,11 +130,12 @@ namespace parsley
 
         void write_newline()
         {
-            *out_ << '\n';
+            out_->write((config_.line_endings == LineEnding::LF ? "\n" : "\r\n"));
             at_line_start_ = true;
         }
 
-        std::ostream* out_;
+        Cursor* out_;
+        YamlSerializerConfig config_;
         int indent_ = 0;
         bool at_line_start_ = true;
     };

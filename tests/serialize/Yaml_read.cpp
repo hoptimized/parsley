@@ -1,6 +1,5 @@
+#include "parsley/serialize/YamlDeserializer.h"
 #include "pch.h"
-
-#include <cstdint>
 
 using namespace parsley;
 
@@ -8,13 +7,13 @@ TEST_CASE("YAML - Deserialize")
 {
     SUBCASE("deserialize - root is null")
     {
-        Node n = Yaml::read("");
+        Node n = parsley::read<YAML>("");
         REQUIRE(n.is_null());
     }
 
     SUBCASE("deserialize - root is scalar")
     {
-        Node n = Yaml::read("test");
+        Node n = parsley::read<YAML>("test");
 
         REQUIRE(n.is_scalar());
         REQUIRE(n.as<StringView>() == "test");
@@ -22,7 +21,7 @@ TEST_CASE("YAML - Deserialize")
 
     SUBCASE("deserialize - root is sequence")
     {
-        Node n = Yaml::read("- foo\n- bar");
+        Node n = parsley::read<YAML>("- foo\n- bar");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 2);
@@ -32,13 +31,13 @@ TEST_CASE("YAML - Deserialize")
 
     SUBCASE("deserialize - sequence with null children")
     {
-        Node n = Yaml::read("-");
+        Node n = parsley::read<YAML>("-");
         
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 1);
         REQUIRE(n[0].is_null());
 
-        n = Yaml::read("- a\n- \n- b");
+        n = parsley::read<YAML>("- a\n- \n- b");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 3);
@@ -46,7 +45,7 @@ TEST_CASE("YAML - Deserialize")
         REQUIRE(n[1].is_null());
         REQUIRE(n[2].as<StringView>() == "b");
 
-        n = Yaml::read("- a\n- b\n-");
+        n = parsley::read<YAML>("- a\n- b\n-");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 3);
@@ -57,14 +56,14 @@ TEST_CASE("YAML - Deserialize")
 
     SUBCASE("deserialize - sequence of scalars")
     {
-        Node n = Yaml::read("- a\n- b");
+        Node n = parsley::read<YAML>("- a\n- b");
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 2);
     }
 
     SUBCASE("deserialize - nested sequences")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 -
   - a
   -
@@ -86,7 +85,7 @@ TEST_CASE("YAML - Deserialize")
 
     SUBCASE("deserialize - root is mapping")
     {
-        Node n = Yaml::read("foo: 1\nbar: 2");
+        Node n = parsley::read<YAML>("foo: 1\nbar: 2");
 
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 2);
@@ -96,13 +95,13 @@ TEST_CASE("YAML - Deserialize")
 
     SUBCASE("deserialize - mapping with null children")
     {
-        Node n = Yaml::read("a:");
+        Node n = parsley::read<YAML>("a:");
         
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 1);
         REQUIRE(n["a"].is_null());
 
-        n = Yaml::read("a: 1\nb:\nc: 2");
+        n = parsley::read<YAML>("a: 1\nb:\nc: 2");
 
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 3);
@@ -110,7 +109,7 @@ TEST_CASE("YAML - Deserialize")
         REQUIRE(n["b"].is_null());
         REQUIRE(n["c"].as<int>() == 2);
 
-        n = Yaml::read("a: 1\nb: 2\nc:");
+        n = parsley::read<YAML>("a: 1\nb: 2\nc:");
 
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 3);
@@ -121,7 +120,7 @@ TEST_CASE("YAML - Deserialize")
 
     SUBCASE("deserialize - nested mappings")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 a:
   b: 1
   c:
@@ -143,7 +142,7 @@ f: 4)");
 
     SUBCASE("deserialize - sequence item with single inline key")
     {
-        Node n = Yaml::read("- a: 1");
+        Node n = parsley::read<YAML>("- a: 1");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 1);
@@ -154,7 +153,7 @@ f: 4)");
 
     SUBCASE("deserialize - sequence of single-key mappings")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 - a: 1
 - b: 2
 )");
@@ -167,7 +166,7 @@ f: 4)");
 
     SUBCASE("deserialize - sequence item with multi-key mapping")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 - a: 1
   b: 2
 )");
@@ -182,7 +181,7 @@ f: 4)");
 
     SUBCASE("deserialize - sequence of multi-key mappings")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 - a: 1
   b: 2
 - a: 3
@@ -199,7 +198,7 @@ f: 4)");
 
     SUBCASE("deserialize - sequence item mapping with nested mapping value")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 - name: ingest
   retries:
     max: 3
@@ -216,7 +215,7 @@ f: 4)");
 
     SUBCASE("deserialize - mapping containing sequence of multi-key mappings")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 workers:
   - name: ingest
     queue: events
@@ -235,7 +234,7 @@ workers:
 
     SUBCASE("deserialize - mapping containing sequence of scalars, sibling key after")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 items:
   - a
   - b
@@ -251,7 +250,7 @@ name: done
 
     SUBCASE("deserialize - sequence of mappings, sibling key after")
     {
-        Node n = Yaml::read(R"(---
+        Node n = parsley::read<YAML>(R"(---
 workers:
   - name: ingest
     queue: events
@@ -298,7 +297,43 @@ workers:
       delay: 10
 )"};
 
-        Node n = Yaml::read(iss);
+        Node n = parsley::read<YAML>(iss);
+
+        REQUIRE(n["name"].as<StringView>() == "demo-app");
+        REQUIRE(n["version"].as<StringView>() == "1.0");
+
+        REQUIRE(n["server"]["host"].as<StringView>() == "localhost");
+        REQUIRE(n["server"]["ports"][0].as<uint16_t>() == 8080);
+        REQUIRE(n["server"]["ports"][1].as<uint16_t>() == 8081);
+        REQUIRE(n["server"]["tls"]["enabled"].as<bool>() == true);
+        REQUIRE(n["server"]["tls"]["cert"].as<StringView>() == "server.pem");
+
+        REQUIRE(n["database"]["engine"].as<StringView>() == "postgres");
+        REQUIRE(n["database"]["connection"]["host"].as<StringView>() == "db.local");
+        REQUIRE(n["database"]["connection"]["user"].as<StringView>() == "app");
+        REQUIRE(n["database"]["connection"]["options"]["pool_size"].as<uint16_t>() == 10);
+
+        REQUIRE(n["workers"][0]["name"].as<StringView>() == "ingest");
+        REQUIRE(n["workers"][0]["queue"].as<StringView>() == "events");
+        auto val = n["workers"][0]["retries"]["max"].as<uint8_t>();
+        REQUIRE(n["workers"][0]["retries"]["max"].as<uint8_t>() == 3);
+        REQUIRE(n["workers"][0]["retries"]["delay"].as<uint8_t>() == 5);
+
+        REQUIRE(n["workers"][1]["name"].as<StringView>() == "cleanup");
+        REQUIRE(n["workers"][1]["queue"].as<StringView>() == "jobs");
+        REQUIRE(n["workers"][1]["retries"]["max"].as<uint8_t>() == 2);
+        REQUIRE(n["workers"][1]["retries"]["delay"].as<uint8_t>() == 10);
+    }
+
+    SUBCASE("deserialize - full document, from file")
+    {
+#if defined(__cpp_lib_filesystem)
+        std::filesystem::path path = "tests/data/doc.yml";
+#else
+        std::string path = "tests/data/doc.yml";
+#endif
+
+        Node n = parsley::read_file<YAML>(path);
 
         REQUIRE(n["name"].as<StringView>() == "demo-app");
         REQUIRE(n["version"].as<StringView>() == "1.0");
