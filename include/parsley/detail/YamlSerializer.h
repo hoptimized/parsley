@@ -1,20 +1,10 @@
 #pragma once
 
 #include "parsley/Node.h"
+#include "parsley/config/YamlSerializerConfig.h"
 
-namespace parsley
+namespace parsley { namespace detail
 {
-    enum class LineEnding
-    {
-        LF,
-        CRLF
-    };
-
-    struct YamlSerializerConfig
-    {
-        LineEnding line_endings = LineEnding::LF;
-    };
-
     template <class Cursor>
     class YamlSerializer
     {
@@ -139,4 +129,4 @@ namespace parsley
         int indent_ = 0;
         bool at_line_start_ = true;
     };
-}
+}}

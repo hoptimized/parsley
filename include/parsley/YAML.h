@@ -1,7 +1,7 @@
 #pragma once
 
-#include "parsley/serialize/YamlDeserializer.h"
-#include "parsley/serialize/YamlSerializer.h"
+#include "parsley/detail/YamlDeserializer.h"
+#include "parsley/detail/YamlSerializer.h"
 
 namespace parsley
 {
@@ -9,12 +9,12 @@ namespace parsley
     {
     public:
         template <class Cursor>
-        using Serializer = YamlSerializer<Cursor>;
+        using Serializer = detail::YamlSerializer<Cursor>;
 
         using SerializerConfig = YamlSerializerConfig;
 
         template <class Cursor>
-        using Deserializer = YamlDeserializer<Cursor>;
+        using Deserializer = detail::YamlDeserializer<Cursor>;
 
         using DeserializerConfig = YamlDeserializerConfig;
     };

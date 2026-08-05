@@ -1,15 +1,12 @@
 #pragma once
 
 #include "parsley/Node.h"
+#include "parsley/config/YamlDeserializerConfig.h"
 
 #include <stack>
 
-namespace parsley
+namespace parsley { namespace detail
 {
-    struct YamlDeserializerConfig
-    {
-    };
-
     template <class Cursor>
     class YamlDeserializer
     {
@@ -241,4 +238,4 @@ namespace parsley
             }
         }
     };
-}
+}}
