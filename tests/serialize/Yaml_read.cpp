@@ -377,4 +377,13 @@ workers:
         REQUIRE(n2["b"].as<int>() == 2);
         REQUIRE(n2["c"].as<int>() == 3);
     }
+
+    SUBCASE("deserialize - end marker")
+    {
+        Node n1 = parsley::read<YAML>("---\na: 1\nb: 2\n  ...\nc: 3"); // shouldn't read "c: 3"
+        REQUIRE(n1.is_map());
+        REQUIRE(n1.size() == 2);
+        REQUIRE(n1["a"].as<int>() == 1);
+        REQUIRE(n1["b"].as<int>() == 2);
+    }
 }

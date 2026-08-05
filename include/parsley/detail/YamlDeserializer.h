@@ -45,6 +45,10 @@ namespace parsley { namespace detail
                 if (content.empty() || content.starts_with("#") || content.starts_with("---"))
                     continue;
 
+                // Handle the end marker
+                if (content.starts_with("..."))
+                    break;
+
                 // Shallower indentation: close nested block(s).
                 while (indent < frames.top().indent)
                 {
