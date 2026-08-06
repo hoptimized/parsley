@@ -18,8 +18,9 @@ namespace parsley { namespace detail
             out_ = &cursor;
             indent_ = 0;
             
-            write_start_marker();            
+            write_start_marker();
             write_node(node, /*is_root*/true);
+            write_end_marker();
 
             out_ = nullptr;
         }
@@ -99,7 +100,19 @@ namespace parsley { namespace detail
 
         void write_start_marker()
         {
+            if (!config_.write_start_marker)
+                return;
+
             out_->write("---");
+            write_newline();
+        }
+
+        void write_end_marker()
+        {
+            if (!config_.write_end_marker)
+                return;
+
+            out_->write("...");
             write_newline();
         }
 

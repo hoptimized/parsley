@@ -190,14 +190,20 @@ workers:
         n.push_back(2);
 
 #if defined(__cpp_designated_initializers)
-        auto serialized = parsley::write<YAML>(n, { .line_endings = LineEnding::CRLF});
+        auto serialized = parsley::write<YAML>(n, { 
+            .line_endings = LineEnding::CRLF,
+            .write_start_marker = false,
+            .write_end_marker = true
+        });
 #else
         YAML::SerializerConfig config;
         config.line_endings = LineEnding::CRLF;
+        config.write_start_marker = false;
+        config.write_end_marker = true;
         auto serialized = parsley::write<YAML>(n, config);
 #endif
 
-        REQUIRE(serialized == "---\r\n- 1\r\n- 2\r\n");
+        REQUIRE(serialized == "- 1\r\n- 2\r\n...\r\n");
     }
 
     SUBCASE("serialize - to stream")

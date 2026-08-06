@@ -25,12 +25,14 @@ namespace parsley { namespace detail
         Node read(Cursor& in)
         {
             // TODO:
+            //  - single-line quoted scalars, both ' and " (so `:` inside quotes doesn't split a mapping)
+            //  - escape sequences
+            //  - multi-line quoted scalars
             //  - inline comments (e.g. `a: b # comment`)
-            //  - quoted scalars (so `:` inside quotes doesn't split a mapping)
-            //  - end marker `...`
-            //  - flow style ({...}, [...])
-            //  - anchors/aliases
             //  - block scalars (|, >)
+            //  - flow style ({...}, [...])
+            //  - tags
+            //  - anchors/aliases
 
             std::stack<Frame> frames;
             frames.push({ 0, false, false, {}, Node{} }); // root frame
