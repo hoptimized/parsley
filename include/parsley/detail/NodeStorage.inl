@@ -88,6 +88,29 @@ namespace parsley
             return type_ == type;
         }
 
+        inline bool NodeStorage::operator==(const NodeStorage& other) const
+        {
+            if (this == &other)
+                return true;
+
+            if (type_ != other.type_)
+                return false;
+
+            switch (type_)
+            {
+                case NodeType::Null:
+                    return true;
+                case NodeType::Scalar:
+                    return scalar_.value == other.scalar_.value;
+                case NodeType::List:
+                    return list_.values == other.list_.values;
+                case NodeType::Map:
+                    return map_.kvps == other.map_.kvps;                
+            }
+
+            throw std::runtime_error("Unhandled node type.");
+        }
+
         template <typename T>
         inline T& NodeStorage::get()
         {

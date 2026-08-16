@@ -36,4 +36,11 @@ namespace parsley
     {
         return value.template as<T>();
     }
+
+    template <typename NodeRef>
+    template <typename T>
+    inline bool Node::EntryBase<NodeRef>::operator==(const T& other) const
+    {
+        return value == other;
+    }
 }

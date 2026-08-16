@@ -77,8 +77,8 @@ TEST_CASE("Node - iteration")
         for (auto kvp : map)
             kvp.value = kvp.value.as<int>() * 100;
 
-        REQUIRE(map["foo"].as<int>() == 100);
-        REQUIRE(map["bar"].as<int>() == 200);
+        REQUIRE(map["foo"] == 100);
+        REQUIRE(map["bar"] == 200);
     }
 
     SUBCASE("const - const iteration works")
@@ -111,7 +111,7 @@ TEST_CASE("Node - iteration")
         Node list = std::vector<int>{ 1, 2 };
         Node::Iterator it = list.begin();
         Node::ConstIterator cit = it; // implicit conversion
-        REQUIRE(cit->as<int>() == 1);
+        REQUIRE(*cit == 1);
     }
 
     SUBCASE("Iterator - comparison works in both directions between Iterator and ConstIterator")
@@ -158,10 +158,10 @@ TEST_CASE("Node - iteration")
         Node list = std::vector<int>{ 5, 6 };
         
         auto it = list.begin();
-        REQUIRE(it->as<int>() == 5);
+        REQUIRE(*it == 5);
 
         ++it;
-        REQUIRE(it->as<int>() == 6);
+        REQUIRE(*it == 6);
 
         ++it;
         REQUIRE(it == list.end());
@@ -172,10 +172,10 @@ TEST_CASE("Node - iteration")
         const Node list = std::vector<int>{ 5, 6 };
 
         auto it = list.begin();
-        REQUIRE(it->as<int>() == 5);
+        REQUIRE(*it == 5);
 
         ++it;
-        REQUIRE(it->as<int>() == 6);
+        REQUIRE(*it == 6);
 
         ++it;
         REQUIRE(it == list.end());
@@ -188,8 +188,8 @@ TEST_CASE("Node - iteration")
         auto it = list.begin();
         auto prev = it++;
 
-        REQUIRE(prev->as<int>() == 1);
-        REQUIRE(it->as<int>() == 2);
+        REQUIRE(*prev == 1);
+        REQUIRE(*it == 2);
     }
 
     SUBCASE("Entry - exposes Node interface")
@@ -199,10 +199,10 @@ TEST_CASE("Node - iteration")
 
         for (auto kvp : map)
         {
-            REQUIRE(kvp.as<int>() == 1);
+            REQUIRE(kvp.value == 1);
 
             kvp = 2;
-            REQUIRE(kvp.as<int>() == 2);
+            REQUIRE(kvp.value == 2);
 
             // TODO: add missing methods
         }
@@ -239,6 +239,6 @@ TEST_CASE("Node - iteration")
         auto cit = list.cbegin();
         auto entry = *cit; // deduces Node::ConstEntry
         static_assert(std::is_same<decltype(entry), Node::ConstEntry>::value, "");
-        REQUIRE(entry.as<int>() == 9);
+        REQUIRE(entry == 9);
     }
 }

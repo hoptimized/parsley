@@ -10,19 +10,19 @@ TEST_CASE("Node - construction and assignment")
         REQUIRE(n.is_null());
 
         Node s = "hello";
-        REQUIRE(s.as<std::string>() == "hello");
+        REQUIRE(s == "hello");
         REQUIRE(s.is_scalar());
 
         Node i = 42;
-        REQUIRE(i.as<int>() == 42);
+        REQUIRE(i == 42);
         REQUIRE(i.is_scalar());
 
         Node d = 3.14;
-        REQUIRE(d.as<double>() == 3.14);
+        REQUIRE(d == 3.14);
         REQUIRE(d.is_scalar());
 
         Node b = true;
-        REQUIRE(b.as<bool>() == true);
+        REQUIRE(b == true);
         REQUIRE(b.is_scalar());
     }
 
@@ -34,20 +34,20 @@ TEST_CASE("Node - construction and assignment")
         REQUIRE(node.is_list());
         REQUIRE(node.size() == 4);
 
-        REQUIRE(node[0].as<int>() == 1);
-        REQUIRE(node[1].as<int>() == 3);
-        REQUIRE(node[2].as<int>() == 3);
-        REQUIRE(node[3].as<int>() == 7);
+        REQUIRE(node[0] == 1);
+        REQUIRE(node[1] == 3);
+        REQUIRE(node[2] == 3);
+        REQUIRE(node[3] == 7);
     }
 
     SUBCASE("assignment overwrites existing value")
     {
         Node node = "hello";
         node = "world";
-        REQUIRE(node.as<std::string>() == "world");
+        REQUIRE(node == "world");
 
         node = 42;
-        REQUIRE(node.as<int>() == 42);
+        REQUIRE(node == 42);
     }
 
     SUBCASE("assignment replaces structure entirely, not merges")
@@ -59,7 +59,7 @@ TEST_CASE("Node - construction and assignment")
         node = 99;
 
         REQUIRE(node.is_scalar());
-        REQUIRE(node.as<int>() == 99);
+        REQUIRE(node == 99);
     }
 
     SUBCASE("move construction and move assignment")
@@ -68,11 +68,11 @@ TEST_CASE("Node - construction and assignment")
         node["foo"] = 1;
 
         Node moved(std::move(node));
-        REQUIRE(moved["foo"].as<int>() == 1);
+        REQUIRE(moved["foo"] == 1);
 
         Node target;
         target = std::move(moved);
-        REQUIRE(target["foo"].as<int>() == 1);
+        REQUIRE(target["foo"] == 1);
     }
 }
 
@@ -85,8 +85,8 @@ TEST_CASE("Node - chained / nested access")
         node["database"]["host"] = "localhost";
         node["database"]["port"] = 5432;
 
-        REQUIRE(node["database"]["host"].as<std::string>() == "localhost");
-        REQUIRE(node["database"]["port"].as<int>() == 5432);
+        REQUIRE(node["database"]["host"] == "localhost");
+        REQUIRE(node["database"]["port"] == 5432);
     }
 
     SUBCASE("mixed list and map access via chained operator[]")
@@ -99,11 +99,11 @@ TEST_CASE("Node - chained / nested access")
         node["users"][1]["name"] = "Bob";
         node["users"][1]["age"] = 25;
 
-        REQUIRE(node["users"][0]["name"].as<std::string>() == "Alice");
-        REQUIRE(node["users"][0]["age"].as<int>() == 30);
+        REQUIRE(node["users"][0]["name"] == "Alice");
+        REQUIRE(node["users"][0]["age"] == 30);
 
-        REQUIRE(node["users"][1]["name"].as<std::string>() == "Bob");
-        REQUIRE(node["users"][1]["age"].as<int>() == 25);
+        REQUIRE(node["users"][1]["name"] == "Bob");
+        REQUIRE(node["users"][1]["age"] == 25);
     }
 
     SUBCASE("nested chained access via const reference")
@@ -113,7 +113,7 @@ TEST_CASE("Node - chained / nested access")
 
         const Node& cnode = node;
 
-        REQUIRE(cnode["users"][0]["name"].as<std::string>() == "Alice");
+        REQUIRE(cnode["users"][0]["name"] == "Alice");
     }
 }
 
@@ -126,7 +126,7 @@ TEST_CASE("Node - push_back")
 
         REQUIRE(node.is_list());
         REQUIRE(node.size() == 1);
-        REQUIRE(node[0].as<int>() == 10);
+        REQUIRE(node[0] == 10);
     }
 
     SUBCASE("push_back onto existing list appends")
@@ -138,9 +138,9 @@ TEST_CASE("Node - push_back")
 
         REQUIRE(node.is_list());
         REQUIRE(node.size() == 3);
-        REQUIRE(node[0].as<int>() == 10);
-        REQUIRE(node[1].as<int>() == 20);
-        REQUIRE(node[2].as<int>() == 30);
+        REQUIRE(node[0] == 10);
+        REQUIRE(node[1] == 20);
+        REQUIRE(node[2] == 30);
     }
 
     SUBCASE("push_back onto scalar throws")
@@ -335,16 +335,16 @@ TEST_CASE("Node - as<T>()")
     SUBCASE("round-trip scalar types")
     {
         Node s = "hello";
-        REQUIRE(s.as<std::string>() == "hello");
+        REQUIRE(s == "hello");
 
         Node i = -123;
-        REQUIRE(i.as<int>() == -123);
+        REQUIRE(i == -123);
 
         Node d = 9.99;
-        REQUIRE(d.as<double>() == 9.99);
+        REQUIRE(d == 9.99);
 
         Node b = false;
-        REQUIRE(b.as<bool>() == false);
+        REQUIRE(b == false);
     }
 
     SUBCASE("round-trip std::vector<int>")
@@ -369,7 +369,7 @@ TEST_CASE("Node - as<T>()")
     {
         Node node = "42";
 
-        REQUIRE(node.as<int>() == 42);
+        REQUIRE(node == 42);
     }
 }
 
