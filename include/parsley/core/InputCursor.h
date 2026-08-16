@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "parsley/core/StringView.h"
+
 namespace parsley
 {
     class StringInputCursor
@@ -14,7 +16,7 @@ namespace parsley
 
         bool get_char(char& c)
         {
-            if (pos_ >= data_.size())
+            if (eof())
                 return false;
 
             c = data_[pos_++];
@@ -23,7 +25,7 @@ namespace parsley
 
         bool get_line(StringView& line)
         {
-            if (pos_ >= data_.size())
+            if (eof())
                 return false;
 
             size_t start = pos_;
