@@ -52,7 +52,7 @@ TEST_CASE("Node - iteration")
 
         std::vector<std::pair<std::string, int>> seen;
         for (auto kvp : map)
-            seen.emplace_back(std::make_pair(kvp.key, kvp.value.as<int>()));
+            seen.emplace_back(std::make_pair(kvp.key.to_owned(), kvp.value.as<int>()));
 
         REQUIRE(seen[0].first == "foo");
         REQUIRE(seen[0].second == 1);

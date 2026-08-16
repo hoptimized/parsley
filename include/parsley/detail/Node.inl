@@ -156,6 +156,11 @@ namespace parsley
         return storage_.is<detail::MapStorage>();
     }
 
+    inline bool Node::is_collection() const
+    {
+        return is_list() || is_map();
+    }
+
     inline bool Node::is(NodeType type) const
     {
         return storage_.is(type);
@@ -285,7 +290,7 @@ namespace parsley
             if (allow_insert)
             {
                 auto& kvps = storage_.get<MapStorage>().kvps;
-                kvps.emplace_back(std::make_pair(key, make_unique<Node>()));
+                kvps.emplace_back(std::make_pair(key.to_owned(), make_unique<Node>()));
                 return kvps.back().second.get();
             }
 

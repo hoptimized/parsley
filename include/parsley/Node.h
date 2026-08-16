@@ -172,6 +172,7 @@ namespace parsley
         bool is_scalar() const;
         bool is_list() const;
         bool is_map() const;
+        bool is_collection() const;
 
         bool is(NodeType type) const;
 
@@ -211,6 +212,7 @@ namespace parsley
             typename = enable_if_t<std::is_convertible<OtherNodeRef, NodeRef>::value>>
         EntryBase(const EntryBase<OtherNodeRef>& other);
 
+        operator NodeRef();
         template <typename T> T as() const;
         
         template <typename T, typename U = NodeRef, typename = detail::enable_if_mutable_t<U>>
