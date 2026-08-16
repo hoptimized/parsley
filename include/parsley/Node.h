@@ -233,8 +233,6 @@ namespace parsley
         
         template <typename T, typename U = NodeRef, typename = detail::enable_if_mutable_t<U>>
         EntryBase& operator=(T&& val);
-
-        // TODO: add missing Node methods
     };
 
     template<typename ListIter, typename MapIter, typename EntryT>
