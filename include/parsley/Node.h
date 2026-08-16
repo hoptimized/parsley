@@ -75,6 +75,8 @@ namespace parsley
             bool is(NodeType type) const;
             template <typename T> bool is() const;
 
+            bool operator==(const NodeStorage& other) const;
+
             template <typename T> T& get();
             template <typename T> const T& get() const;
             template <typename T> T* try_get();
@@ -125,7 +127,16 @@ namespace parsley
             std::vector<std::unique_ptr<Node>>::const_iterator,
             std::vector<std::pair<std::string, std::unique_ptr<Node>>>::const_iterator,
             ConstEntry>;
-            
+
+        template <typename T, typename Enable = void>
+        struct EqualityComparer
+        {
+            static bool equals(const Node& node, const T& other)
+            {
+                return node.as<T>() == other;
+            }
+        };
+
         //-------------------------------------------------------------------------------------------------
         // Construction & Assignment
 
@@ -176,6 +187,12 @@ namespace parsley
 
         bool is(NodeType type) const;
 
+        template <typename T>
+        bool operator==(const T& other) const
+        {
+            return EqualityComparer<T>().equals(*this, other);
+        }
+
         //-------------------------------------------------------------------------------------------------
         // Capacity
 
@@ -213,7 +230,6 @@ namespace parsley
         EntryBase(const EntryBase<OtherNodeRef>& other);
 
         operator NodeRef();
-        template <typename T> T as() const;
         
         template <typename T, typename U = NodeRef, typename = detail::enable_if_mutable_t<U>>
         EntryBase& operator=(T&& val);

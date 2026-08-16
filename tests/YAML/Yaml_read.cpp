@@ -15,7 +15,7 @@ TEST_CASE("YAML - Deserialize")
         Node n = parsley::read<YAML>("test");
 
         REQUIRE(n.is_scalar());
-        REQUIRE(n.as<StringView>() == "test");
+        REQUIRE(n == "test");
     }
 
     SUBCASE("deserialize - root is sequence")
@@ -24,8 +24,8 @@ TEST_CASE("YAML - Deserialize")
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 2);
-        REQUIRE(n[0].as<StringView>() == "foo");
-        REQUIRE(n[1].as<StringView>() == "bar");
+        REQUIRE(n[0] == "foo");
+        REQUIRE(n[1] == "bar");
     }
 
     SUBCASE("deserialize - sequence with null children")
@@ -40,16 +40,16 @@ TEST_CASE("YAML - Deserialize")
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 3);
-        REQUIRE(n[0].as<StringView>() == "a");
+        REQUIRE(n[0] == "a");
         REQUIRE(n[1].is_null());
-        REQUIRE(n[2].as<StringView>() == "b");
+        REQUIRE(n[2] == "b");
 
         n = parsley::read<YAML>("- a\n- b\n-");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 3);
-        REQUIRE(n[0].as<StringView>() == "a");
-        REQUIRE(n[1].as<StringView>() == "b");
+        REQUIRE(n[0] == "a");
+        REQUIRE(n[1] == "b");
         REQUIRE(n[2].is_null());
     }
 
@@ -74,12 +74,12 @@ TEST_CASE("YAML - Deserialize")
         REQUIRE(n.size() == 2);
         REQUIRE(n[0].is_list());
         REQUIRE(n[0].size() == 2);
-        REQUIRE(n[0][0].as<StringView>() == "a");
+        REQUIRE(n[0][0] == "a");
         REQUIRE(n[0][1].is_list());
         REQUIRE(n[0][1].size() == 2);
-        REQUIRE(n[0][1][0].as<StringView>() == "b");
-        REQUIRE(n[0][1][1].as<StringView>() == "c");
-        REQUIRE(n[1].as<StringView>() == "d");
+        REQUIRE(n[0][1][0] == "b");
+        REQUIRE(n[0][1][1] == "c");
+        REQUIRE(n[1] == "d");
     }
 
     SUBCASE("deserialize - root is mapping")
@@ -88,8 +88,8 @@ TEST_CASE("YAML - Deserialize")
 
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 2);
-        REQUIRE(n["foo"].as<int>() == 1);
-        REQUIRE(n["bar"].as<int>() == 2);
+        REQUIRE(n["foo"] == 1);
+        REQUIRE(n["bar"] == 2);
     }
 
     SUBCASE("deserialize - mapping with null children")
@@ -104,16 +104,16 @@ TEST_CASE("YAML - Deserialize")
 
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 3);
-        REQUIRE(n["a"].as<int>() == 1);
+        REQUIRE(n["a"] == 1);
         REQUIRE(n["b"].is_null());
-        REQUIRE(n["c"].as<int>() == 2);
+        REQUIRE(n["c"] == 2);
 
         n = parsley::read<YAML>("a: 1\nb: 2\nc:");
 
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 3);
-        REQUIRE(n["a"].as<int>() == 1);
-        REQUIRE(n["b"].as<int>() == 2);
+        REQUIRE(n["a"] == 1);
+        REQUIRE(n["b"] == 2);
         REQUIRE(n["c"].is_null());
     }
 
@@ -131,12 +131,12 @@ f: 4)");
         REQUIRE(n.size() == 2);
         REQUIRE(n["a"].is_map());
         REQUIRE(n["a"].size() == 2);
-        REQUIRE(n["a"]["b"].as<int>() == 1);
+        REQUIRE(n["a"]["b"] == 1);
         REQUIRE(n["a"]["c"].is_map());
         REQUIRE(n["a"]["c"].size() == 2);
-        REQUIRE(n["a"]["c"]["d"].as<int>() == 2);
-        REQUIRE(n["a"]["c"]["e"].as<int>() == 3);
-        REQUIRE(n["f"].as<int>() == 4);
+        REQUIRE(n["a"]["c"]["d"] == 2);
+        REQUIRE(n["a"]["c"]["e"] == 3);
+        REQUIRE(n["f"] == 4);
     }
 
     SUBCASE("deserialize - sequence item with single inline key")
@@ -147,7 +147,7 @@ f: 4)");
         REQUIRE(n.size() == 1);
         REQUIRE(n[0].is_map());
         REQUIRE(n[0].size() == 1);
-        REQUIRE(n[0]["a"].as<int>() == 1);
+        REQUIRE(n[0]["a"] == 1);
     }
 
     SUBCASE("deserialize - sequence of single-key mappings")
@@ -159,8 +159,8 @@ f: 4)");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 2);
-        REQUIRE(n[0]["a"].as<int>() == 1);
-        REQUIRE(n[1]["b"].as<int>() == 2);
+        REQUIRE(n[0]["a"] == 1);
+        REQUIRE(n[1]["b"] == 2);
     }
 
     SUBCASE("deserialize - sequence item with multi-key mapping")
@@ -174,8 +174,8 @@ f: 4)");
         REQUIRE(n.size() == 1);
         REQUIRE(n[0].is_map());
         REQUIRE(n[0].size() == 2);
-        REQUIRE(n[0]["a"].as<int>() == 1);
-        REQUIRE(n[0]["b"].as<int>() == 2);
+        REQUIRE(n[0]["a"] == 1);
+        REQUIRE(n[0]["b"] == 2);
     }
 
     SUBCASE("deserialize - sequence of multi-key mappings")
@@ -189,10 +189,10 @@ f: 4)");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 2);
-        REQUIRE(n[0]["a"].as<int>() == 1);
-        REQUIRE(n[0]["b"].as<int>() == 2);
-        REQUIRE(n[1]["a"].as<int>() == 3);
-        REQUIRE(n[1]["b"].as<int>() == 4);
+        REQUIRE(n[0]["a"] == 1);
+        REQUIRE(n[0]["b"] == 2);
+        REQUIRE(n[1]["a"] == 3);
+        REQUIRE(n[1]["b"] == 4);
     }
 
     SUBCASE("deserialize - sequence item mapping with nested mapping value")
@@ -206,10 +206,10 @@ f: 4)");
 
         REQUIRE(n.is_list());
         REQUIRE(n.size() == 1);
-        REQUIRE(n[0]["name"].as<StringView>() == "ingest");
+        REQUIRE(n[0]["name"] == "ingest");
         REQUIRE(n[0]["retries"].is_map());
-        REQUIRE(n[0]["retries"]["max"].as<int>() == 3);
-        REQUIRE(n[0]["retries"]["delay"].as<int>() == 5);
+        REQUIRE(n[0]["retries"]["max"] == 3);
+        REQUIRE(n[0]["retries"]["delay"] == 5);
     }
 
     SUBCASE("deserialize - mapping containing sequence of multi-key mappings")
@@ -225,10 +225,10 @@ workers:
         REQUIRE(n.is_map());
         REQUIRE(n["workers"].is_list());
         REQUIRE(n["workers"].size() == 2);
-        REQUIRE(n["workers"][0]["name"].as<StringView>() == "ingest");
-        REQUIRE(n["workers"][0]["queue"].as<StringView>() == "events");
-        REQUIRE(n["workers"][1]["name"].as<StringView>() == "cleanup");
-        REQUIRE(n["workers"][1]["queue"].as<StringView>() == "jobs");
+        REQUIRE(n["workers"][0]["name"] == "ingest");
+        REQUIRE(n["workers"][0]["queue"] == "events");
+        REQUIRE(n["workers"][1]["name"] == "cleanup");
+        REQUIRE(n["workers"][1]["queue"] == "jobs");
     }
 
     SUBCASE("deserialize - mapping containing sequence of scalars, sibling key after")
@@ -244,7 +244,7 @@ name: done
         REQUIRE(n.size() == 2);
         REQUIRE(n["items"].is_list());
         REQUIRE(n["items"].size() == 2);
-        REQUIRE(n["name"].as<StringView>() == "done");
+        REQUIRE(n["name"] == "done");
     }
 
     SUBCASE("deserialize - sequence of mappings, sibling key after")
@@ -258,9 +258,9 @@ name: done
 
         REQUIRE(n.is_map());
         REQUIRE(n.size() == 2);
-        REQUIRE(n["workers"][0]["name"].as<StringView>() == "ingest");
-        REQUIRE(n["workers"][0]["queue"].as<StringView>() == "events");
-        REQUIRE(n["name"].as<StringView>() == "done");
+        REQUIRE(n["workers"][0]["name"] == "ingest");
+        REQUIRE(n["workers"][0]["queue"] == "events");
+        REQUIRE(n["name"] == "done");
     }
 
     SUBCASE("deserialize - full document")
@@ -298,30 +298,29 @@ workers:
 
         Node n = parsley::read<YAML>(iss);
 
-        REQUIRE(n["name"].as<StringView>() == "demo-app");
-        REQUIRE(n["version"].as<StringView>() == "1.0");
+        REQUIRE(n["name"] == "demo-app");
+        REQUIRE(n["version"] == "1.0");
 
-        REQUIRE(n["server"]["host"].as<StringView>() == "localhost");
-        REQUIRE(n["server"]["ports"][0].as<uint16_t>() == 8080);
-        REQUIRE(n["server"]["ports"][1].as<uint16_t>() == 8081);
-        REQUIRE(n["server"]["tls"]["enabled"].as<bool>() == true);
-        REQUIRE(n["server"]["tls"]["cert"].as<StringView>() == "server.pem");
+        REQUIRE(n["server"]["host"] == "localhost");
+        REQUIRE(n["server"]["ports"][0] == 8080);
+        REQUIRE(n["server"]["ports"][1] == 8081);
+        REQUIRE(n["server"]["tls"]["enabled"] == true);
+        REQUIRE(n["server"]["tls"]["cert"] == "server.pem");
 
-        REQUIRE(n["database"]["engine"].as<StringView>() == "postgres");
-        REQUIRE(n["database"]["connection"]["host"].as<StringView>() == "db.local");
-        REQUIRE(n["database"]["connection"]["user"].as<StringView>() == "app");
-        REQUIRE(n["database"]["connection"]["options"]["pool_size"].as<uint16_t>() == 10);
+        REQUIRE(n["database"]["engine"] == "postgres");
+        REQUIRE(n["database"]["connection"]["host"] == "db.local");
+        REQUIRE(n["database"]["connection"]["user"] == "app");
+        REQUIRE(n["database"]["connection"]["options"]["pool_size"] == 10);
 
-        REQUIRE(n["workers"][0]["name"].as<StringView>() == "ingest");
-        REQUIRE(n["workers"][0]["queue"].as<StringView>() == "events");
-        auto val = n["workers"][0]["retries"]["max"].as<uint8_t>();
-        REQUIRE(n["workers"][0]["retries"]["max"].as<uint8_t>() == 3);
-        REQUIRE(n["workers"][0]["retries"]["delay"].as<uint8_t>() == 5);
+        REQUIRE(n["workers"][0]["name"] == "ingest");
+        REQUIRE(n["workers"][0]["queue"] == "events");
+        REQUIRE(n["workers"][0]["retries"]["max"] == 3);
+        REQUIRE(n["workers"][0]["retries"]["delay"] == 5);
 
-        REQUIRE(n["workers"][1]["name"].as<StringView>() == "cleanup");
-        REQUIRE(n["workers"][1]["queue"].as<StringView>() == "jobs");
-        REQUIRE(n["workers"][1]["retries"]["max"].as<uint8_t>() == 2);
-        REQUIRE(n["workers"][1]["retries"]["delay"].as<uint8_t>() == 10);
+        REQUIRE(n["workers"][1]["name"] == "cleanup");
+        REQUIRE(n["workers"][1]["queue"] == "jobs");
+        REQUIRE(n["workers"][1]["retries"]["max"] == 2);
+        REQUIRE(n["workers"][1]["retries"]["delay"] == 10);
     }
 
     SUBCASE("deserialize - full document, from file")
@@ -334,30 +333,29 @@ workers:
 
         Node n = parsley::read_file<YAML>(path);
 
-        REQUIRE(n["name"].as<StringView>() == "demo-app");
-        REQUIRE(n["version"].as<StringView>() == "1.0");
+        REQUIRE(n["name"] == "demo-app");
+        REQUIRE(n["version"] == "1.0");
 
-        REQUIRE(n["server"]["host"].as<StringView>() == "localhost");
-        REQUIRE(n["server"]["ports"][0].as<uint16_t>() == 8080);
-        REQUIRE(n["server"]["ports"][1].as<uint16_t>() == 8081);
-        REQUIRE(n["server"]["tls"]["enabled"].as<bool>() == true);
-        REQUIRE(n["server"]["tls"]["cert"].as<StringView>() == "server.pem");
+        REQUIRE(n["server"]["host"] == "localhost");
+        REQUIRE(n["server"]["ports"][0] == 8080);
+        REQUIRE(n["server"]["ports"][1] == 8081);
+        REQUIRE(n["server"]["tls"]["enabled"] == true);
+        REQUIRE(n["server"]["tls"]["cert"] == "server.pem");
 
-        REQUIRE(n["database"]["engine"].as<StringView>() == "postgres");
-        REQUIRE(n["database"]["connection"]["host"].as<StringView>() == "db.local");
-        REQUIRE(n["database"]["connection"]["user"].as<StringView>() == "app");
-        REQUIRE(n["database"]["connection"]["options"]["pool_size"].as<uint16_t>() == 10);
+        REQUIRE(n["database"]["engine"] == "postgres");
+        REQUIRE(n["database"]["connection"]["host"] == "db.local");
+        REQUIRE(n["database"]["connection"]["user"] == "app");
+        REQUIRE(n["database"]["connection"]["options"]["pool_size"] == 10);
 
-        REQUIRE(n["workers"][0]["name"].as<StringView>() == "ingest");
-        REQUIRE(n["workers"][0]["queue"].as<StringView>() == "events");
-        auto val = n["workers"][0]["retries"]["max"].as<uint8_t>();
-        REQUIRE(n["workers"][0]["retries"]["max"].as<uint8_t>() == 3);
-        REQUIRE(n["workers"][0]["retries"]["delay"].as<uint8_t>() == 5);
+        REQUIRE(n["workers"][0]["name"] == "ingest");
+        REQUIRE(n["workers"][0]["queue"] == "events");
+        REQUIRE(n["workers"][0]["retries"]["max"] == 3);
+        REQUIRE(n["workers"][0]["retries"]["delay"] == 5);
 
-        REQUIRE(n["workers"][1]["name"].as<StringView>() == "cleanup");
-        REQUIRE(n["workers"][1]["queue"].as<StringView>() == "jobs");
-        REQUIRE(n["workers"][1]["retries"]["max"].as<uint8_t>() == 2);
-        REQUIRE(n["workers"][1]["retries"]["delay"].as<uint8_t>() == 10);
+        REQUIRE(n["workers"][1]["name"] == "cleanup");
+        REQUIRE(n["workers"][1]["queue"] == "jobs");
+        REQUIRE(n["workers"][1]["retries"]["max"] == 2);
+        REQUIRE(n["workers"][1]["retries"]["delay"] == 10);
     }
 
     SUBCASE("deserialize - mixed newline characters")
@@ -365,17 +363,17 @@ workers:
         Node n1 = parsley::read<YAML>("---\na: 1\r\nb: 2\rc: 3");
         REQUIRE(n1.is_map());
         REQUIRE(n1.size() == 3);
-        REQUIRE(n1["a"].as<int>() == 1);
-        REQUIRE(n1["b"].as<int>() == 2);
-        REQUIRE(n1["c"].as<int>() == 3);
+        REQUIRE(n1["a"] == 1);
+        REQUIRE(n1["b"] == 2);
+        REQUIRE(n1["c"] == 3);
 
         std::istringstream stream { "---\na: 1\r\nb: 2\rc: 3" };
         Node n2 = parsley::read<YAML>(stream);
         REQUIRE(n2.is_map());
         REQUIRE(n2.size() == 3);
-        REQUIRE(n2["a"].as<int>() == 1);
-        REQUIRE(n2["b"].as<int>() == 2);
-        REQUIRE(n2["c"].as<int>() == 3);
+        REQUIRE(n2["a"] == 1);
+        REQUIRE(n2["b"] == 2);
+        REQUIRE(n2["c"] == 3);
     }
 
     SUBCASE("deserialize - end marker")
@@ -383,7 +381,7 @@ workers:
         Node n1 = parsley::read<YAML>("---\na: 1\nb: 2\n  ...\nc: 3"); // shouldn't read "c: 3"
         REQUIRE(n1.is_map());
         REQUIRE(n1.size() == 2);
-        REQUIRE(n1["a"].as<int>() == 1);
-        REQUIRE(n1["b"].as<int>() == 2);
+        REQUIRE(n1["a"] == 1);
+        REQUIRE(n1["b"] == 2);
     }
 }

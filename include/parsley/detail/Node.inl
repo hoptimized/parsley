@@ -7,7 +7,6 @@
 #include "parsley/detail/util.h"
 
 #include <stdexcept>
-#include <type_traits>
 
 namespace parsley
 {
@@ -165,6 +164,24 @@ namespace parsley
     {
         return storage_.is(type);
     }
+
+    template <typename T>
+    struct Node::EqualityComparer<T, typename std::enable_if<std::is_convertible<T, StringView>::value>::type>
+    {
+        static bool equals(const Node& node, const StringView other)
+        {
+            return node.get_scalar() == other;
+        }
+    };
+
+    template <>
+    struct Node::EqualityComparer<Node>
+    {
+        static bool equals(const Node& node, const Node& other)
+        {
+            return node.storage_ == other.storage_;
+        }
+    };
 
     //-------------------------------------------------------------------------------------------------
     // Capacity
