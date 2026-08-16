@@ -43,7 +43,9 @@ set_target_properties(parsley_tests PROPERTIES
 
 # --- Test discovery ----------------------------------------------------
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
-doctest_discover_tests(parsley_tests)
+doctest_discover_tests(parsley_tests
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
 
 # --- Export Compile Commands --------------------------------------------
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
