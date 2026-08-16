@@ -187,11 +187,7 @@ namespace parsley
 
         bool is(NodeType type) const;
 
-        template <typename T>
-        bool operator==(const T& other) const
-        {
-            return EqualityComparer<T>().equals(*this, other);
-        }
+        template <typename T> bool operator==(const T& other) const;
 
         //-------------------------------------------------------------------------------------------------
         // Capacity

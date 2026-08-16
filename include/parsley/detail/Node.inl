@@ -166,6 +166,12 @@ namespace parsley
     }
 
     template <typename T>
+    inline bool Node::operator==(const T& other) const
+    {
+        return EqualityComparer<T>().equals(*this, other);
+    }
+
+    template <typename T>
     struct Node::EqualityComparer<T, typename std::enable_if<std::is_convertible<T, StringView>::value>::type>
     {
         static bool equals(const Node& node, const StringView other)
