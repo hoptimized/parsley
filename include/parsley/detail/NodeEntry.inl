@@ -29,4 +29,18 @@ namespace parsley
         value = std::move(val);
         return *this;
     }
+
+    template <typename NodeRef>
+    template <typename T>
+    inline T Node::EntryBase<NodeRef>::as() const
+    {
+        return value.template as<T>();
+    }
+
+    template <typename NodeRef>
+    template <typename T>
+    inline bool Node::EntryBase<NodeRef>::operator==(const T& other) const
+    {
+        return value == other;
+    }
 }

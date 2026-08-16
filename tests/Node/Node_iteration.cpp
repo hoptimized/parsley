@@ -10,7 +10,7 @@ TEST_CASE("Node - iteration")
 
         std::vector<int> seen;
         for (auto entry : list)
-            seen.push_back(entry.value.as<int>());
+            seen.push_back(entry.as<int>());
 
         REQUIRE(seen == std::vector<int>{1, 3, 3, 7});
     }
@@ -27,11 +27,11 @@ TEST_CASE("Node - iteration")
     {
         Node list = std::vector<int>{ 1, 2, 3 };
         for (auto entry : list)
-            entry = entry.value.as<int>() + 10;
+            entry = entry.as<int>() + 10;
 
         std::vector<int> seen;
         for (auto entry : list)
-            seen.push_back(entry.value.as<int>());
+            seen.push_back(entry.as<int>());
 
         REQUIRE(seen == std::vector<int>{11, 12, 13});
     }
@@ -86,8 +86,8 @@ TEST_CASE("Node - iteration")
         const Node list = std::vector<int>{ 5, 6 };
         int sum = 0;
 
-        for (auto entry : list)
-            sum += entry.value.as<int>();
+        for (auto val : list)
+            sum += val.as<int>();
         
         REQUIRE(sum == 11);
     }
@@ -111,7 +111,7 @@ TEST_CASE("Node - iteration")
         Node list = std::vector<int>{ 1, 2 };
         Node::Iterator it = list.begin();
         Node::ConstIterator cit = it; // implicit conversion
-        REQUIRE(cit->value == 1);
+        REQUIRE(*cit == 1);
     }
 
     SUBCASE("Iterator - comparison works in both directions between Iterator and ConstIterator")
@@ -158,10 +158,10 @@ TEST_CASE("Node - iteration")
         Node list = std::vector<int>{ 5, 6 };
         
         auto it = list.begin();
-        REQUIRE(it->value == 5);
+        REQUIRE(*it == 5);
 
         ++it;
-        REQUIRE(it->value == 6);
+        REQUIRE(*it == 6);
 
         ++it;
         REQUIRE(it == list.end());
@@ -172,10 +172,10 @@ TEST_CASE("Node - iteration")
         const Node list = std::vector<int>{ 5, 6 };
 
         auto it = list.begin();
-        REQUIRE(it->value == 5);
+        REQUIRE(*it == 5);
 
         ++it;
-        REQUIRE(it->value == 6);
+        REQUIRE(*it == 6);
 
         ++it;
         REQUIRE(it == list.end());
@@ -188,8 +188,8 @@ TEST_CASE("Node - iteration")
         auto it = list.begin();
         auto prev = it++;
 
-        REQUIRE(prev->value == 1);
-        REQUIRE(it->value == 2);
+        REQUIRE(*prev == 1);
+        REQUIRE(*it == 2);
     }
 
     SUBCASE("Entry - exposes Node interface")
@@ -239,6 +239,6 @@ TEST_CASE("Node - iteration")
         auto cit = list.cbegin();
         auto entry = *cit; // deduces Node::ConstEntry
         static_assert(std::is_same<decltype(entry), Node::ConstEntry>::value, "");
-        REQUIRE(entry.value == 9);
+        REQUIRE(entry == 9);
     }
 }
