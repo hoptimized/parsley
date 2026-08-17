@@ -5,6 +5,7 @@
 
 #include "parsley/Node.h"
 #include "parsley/core/StringView.h"
+#include "parsley/core/StringViewInputBuffer.h"
 #include "parsley/detail/util.h"
 
 #include <limits>
@@ -27,8 +28,9 @@ namespace parsley
     template <typename T, typename E>
     void Transfer<T, E>::read(const Node& node, T& val)
     {
-        std::istringstream iss(node.get_scalar());
-        iss >> val;
+        StringViewInputBuffer buf{ node.get_scalar() };
+        std::istream is(&buf);
+        is >> val;
     }
 
     //-----------------------------------------------------------------------------------------------------
@@ -44,19 +46,19 @@ namespace parsley
 
         static void read(const Node& node, bool& val)
         {
-            auto& str = node.get_scalar();
+            const StringView sv = node.get_scalar();
             
-            if (str == "true" || str == "on" || str == "1")
+            if (sv == "true" || sv == "on" || sv == "1")
             {
                 val = true;
             }
-            else if (str == "false" || str == "off" || str == "0")
+            else if (sv == "false" || sv == "off" || sv == "0")
             {
                 val = false;
             }
             else
             {
-                throw std::runtime_error("Cannot cast to bool: \"" + str + "\"");
+                throw std::runtime_error("Cannot cast to bool: \"" + sv.to_owned() + "\"");
             }
         }
     };
@@ -83,19 +85,21 @@ namespace parsley
 
         static void read(const Node& node, T& val)
         {
-            std::istringstream iss(node.get_scalar());
-            wide_t tmp;
-            iss >> tmp;
+            StringViewInputBuffer buf{ node.get_scalar() };
+            std::istream is(&buf);
 
-            if (iss.fail())
+            wide_t tmp;
+            is >> tmp;
+
+            if (is.fail())
             {
-                throw std::runtime_error("Cannot cast to integer: \"" + node.get_scalar() + "\"");
+                throw std::runtime_error("Cannot cast to integer: \"" + node.get_scalar().to_owned() + "\"");
             }
 
             if (tmp < static_cast<wide_t>(std::numeric_limits<T>::min()) ||
                 tmp > static_cast<wide_t>(std::numeric_limits<T>::max()))
             {
-                throw std::runtime_error("Value out of range for target type: \"" + node.get_scalar() + "\"");
+                throw std::runtime_error("Value out of range for target type: \"" + node.get_scalar().to_owned() + "\"");
             }
             
             val = static_cast<T>(tmp);
@@ -103,20 +107,55 @@ namespace parsley
     };
 
     //-----------------------------------------------------------------------------------------------------
-    // StringView
+    // String-like
 
     template <>
-    struct Transfer<StringView, void>
+    struct Transfer<std::string>
+    {
+        static void write(Node& node, const std::string& val)
+        {
+            node.set_scalar(val);
+        }
+
+        static void write(Node& node, std::string&& val)
+        {
+            node.set_scalar(std::move(val));
+        }
+
+        static void read(const Node& node, std::string& val)
+        {
+            val = node.get_scalar().to_owned();
+        }
+    };
+
+    template <>
+    struct Transfer<StringView>
     {
         static void write(Node& node, const StringView& val)
         {
             node.set_scalar(val.to_owned());
         }
 
+        // read() rebinds into node-owned storage (no copy). Safe as long as the 
+        // Node outlives the StringView, same lifetime contract as get_scalar().
         static void read(const Node& node, StringView& val)
         {
             val = node.get_scalar();
         }
+    };
+
+    // Anything convertible to StringView, for write-only purposes (literals, const char*, 
+    // string_view-like types, etc).
+    template <typename T>
+    struct Transfer<T, enable_if_t<std::is_convertible<T, StringView>::value>>
+    {
+        static void write(Node& node, const T& val)
+        {
+            node.set_scalar(StringView(val).to_owned());
+        }
+
+        // No read() - these types have no defined way to own a copy of scalar data, 
+        // so reading into them isn't offered.
     };
 
     //-----------------------------------------------------------------------------------------------------

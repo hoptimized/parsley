@@ -215,12 +215,13 @@ namespace parsley
     //-------------------------------------------------------------------------------------------------
     // Low-level access
 
-    inline void Node::set_scalar(std::string s)
+    template <typename T>
+    inline void Node::set_scalar(T&& str)
     {
-        storage_ = detail::ScalarStorage{ std::move(s) };
+        storage_ = detail::ScalarStorage{ std::forward<T>(str) };
     }
 
-    inline const std::string& Node::get_scalar() const
+    inline StringView Node::get_scalar() const
     {
         const auto* s = storage_.try_get<detail::ScalarStorage>();
         if (!s)

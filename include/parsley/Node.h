@@ -198,8 +198,8 @@ namespace parsley
         //-------------------------------------------------------------------------------------------------
         // Low-level access
 
-        void set_scalar(std::string s);
-        const std::string& get_scalar() const;
+        template <typename T> void set_scalar(T&& str);
+        StringView get_scalar() const;
 
     private:
         Node* get_collection_node(size_t idx, bool allow_insert);
