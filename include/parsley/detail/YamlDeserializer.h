@@ -3,65 +3,202 @@
 #include "parsley/Node.h"
 #include "parsley/config/YamlDeserializerConfig.h"
 
-#include <cassert>
-#include <stack>
+#include <string>
 
 namespace parsley { namespace detail
 {
     template <class Cursor>
     class YamlDeserializer
     {
-        struct Frame
-        {
-            size_t indent;
-            bool is_block_start; // true once this frame is known to hold a sequence or mapping
-            bool expecting_value; // true if the last marker/key had no value on the same line
-            std::string pending_key; // expecting a value for this key
-            Node node;
-        };
-
     public:
         YamlDeserializer(YamlDeserializerConfig config = {}) {}
 
         Node read(Cursor& in)
         {
-            // TODO:
-            //  - single-line quoted scalars, both ' and " (so `:` inside quotes doesn't split a mapping)
-            //  - escape sequences
-            //  - multi-line quoted scalars
-            //  - inline comments (e.g. `a: b # comment`)
-            //  - block scalars (|, >)
-            //  - flow style ({...}, [...])
-            //  - tags
-            //  - anchors/aliases
+            in_ = &in;
+            read_line();
 
-            indent_ = 0;
-            frames_.push({ 0, false, false, {}, Node{} }); // root frame
+            skip_structural_noise();
 
-            // Read the input line by line.
-            while (in.get_line(line_))
-            {
-                handle_leading_whitespace();
+            if (eof())
+                return {};
 
-                if (should_skip_line())
-                    continue;
-
-                if (is_end_marker())
-                    break;
-
-                handle_nesting();
-                process_content();
-            }
-
-            Node root = unwind_frames();
-            return root;
+            return parse_block(current_indent());
         }
 
     private:
-        void handle_leading_whitespace()
+        Node parse_block(size_t min_indent)
         {
-            indent_ = get_indent(line_);
-            line_.remove_prefix(indent_);
+            skip_structural_noise();
+
+            if (eof() || current_indent() < min_indent)
+                return {}; // nothing here at this level -> null
+
+            size_t indent = current_indent();
+            StringView content = current_content();
+            
+            Node node;
+
+            if (try_parse_sequence(content, indent, &node))
+                return node;
+
+            if (try_parse_mapping(content, indent, &node))
+                return node;
+
+            return parse_scalar(indent);
+        }
+
+        bool try_parse_sequence(StringView content, size_t indent, Node* out_seq)
+        {
+            if (!is_sequence_marker(content))
+                return false;
+
+            while (!eof() && current_indent() == indent && is_sequence_marker(current_content()))
+            {
+                StringView content = current_content();
+                content.remove_prefix(1); // '-'
+                size_t extra = 1 + strip_leading_whitespace(content);
+                size_t item_indent = indent + extra;
+
+                if (content.empty())
+                {
+                    read_line();
+                    out_seq->push_back(parse_block(item_indent));
+                    continue;
+                }
+
+                StringView key, rest;
+                if (is_mapping_kvp(content, &key, &rest))
+                {
+                    read_line();
+                    Node map;
+                    parse_mapping_lines(map, item_indent, &key, &rest);
+                    out_seq->push_back(std::move(map));
+                }
+                else
+                {
+                    std::string text = content.to_owned();
+                    read_line();
+                    out_seq->push_back(parse_scalar_folded(std::move(text), item_indent - 1));
+                }
+            }
+
+            return out_seq->size() > 0;
+        }
+
+        bool try_parse_mapping(StringView content, size_t indent, Node* out_map)
+        {
+            StringView key, rest;
+            if (!is_mapping_kvp(current_content(), &key, &rest))
+                return false;
+
+            read_line();
+            parse_mapping_lines(*out_map, indent, &key, &rest);
+            return true;
+        }
+
+        // Parses zero or more "key: value" lines sitting at exactly `indent`.
+        // If `first_key`/`first_rest` are given, they're an already-consumed
+        // pair (the caller peeled it off a "- key: value" or lookahead line
+        // before knowing it was starting a mapping) and get added first,
+        // without re-reading a line for it.
+        void parse_mapping_lines(
+            Node& out_map,
+            size_t indent,
+            const StringView* first_key = nullptr,
+            const StringView* first_rest = nullptr)
+        {
+            if (first_key)
+                add_kvp(out_map, *first_key, *first_rest, indent);
+
+            while (!eof() && current_indent() == indent)
+            {
+                StringView key, rest;
+                if (!is_mapping_kvp(current_content(), &key, &rest))
+                    break;
+
+                read_line();
+                add_kvp(out_map, key, rest, indent);
+            }
+        }
+
+        void add_kvp(Node& map, StringView key, StringView rest, size_t key_indent)
+        {
+            if (rest.empty())
+                map[key.to_owned()] = parse_block(key_indent + 1); // value must be deeper
+            else
+                map[key.to_owned()] = parse_scalar_folded(rest.to_owned(), key_indent);
+        }
+
+        Node parse_scalar(size_t indent)
+        {
+            std::string text = current_content().to_owned();
+            read_line();
+            return parse_scalar_folded(std::move(text), indent);
+        }
+
+        // Folds in following lines indented deeper than min_indent: 
+        // consecutive lines join with a space, a blank line in the 
+        // run joins with '\n' instead.
+        Node parse_scalar_folded(std::string first_line, size_t min_indent)
+        {
+            std::string& text = first_line;
+            size_t blank_lines = 0;
+
+            while (!eof())
+            {
+                if (current_line_is_blank())
+                {
+                    ++blank_lines;
+                    read_line();
+                    continue;
+                }
+
+                if (current_indent() <= min_indent)
+                    break; // dedent / sibling: fold ends
+
+                StringView content = current_content();
+                StringView key, rest;
+                if (is_sequence_marker(content) || is_mapping_kvp(content, &key, &rest))
+                    break; // deeper line that's actually a new construct
+
+                text += blank_lines ? std::string(blank_lines, '\n') : " ";
+                blank_lines = 0;
+                text += content.to_owned();
+                read_line();
+            }
+
+            return Node(std::move(text));
+        }
+
+        // --- line helpers ---------------------------------------------------
+
+        bool is_sequence_marker(StringView content)
+        {
+            if (content.empty())
+                return false;
+
+            if (content.size() == 1 && content.front() == '-')
+                return true;
+
+            return content.starts_with("- ");
+        }
+
+        // TODO: not quote-aware - `"a: b": c` misparses.
+        bool is_mapping_kvp(StringView content, StringView* out_key, StringView* out_rest)
+        {
+            for (size_t i = 0; i < content.size(); ++i)
+            {
+                if (content[i] == ':' && (i + 1 == content.size() || content[i + 1] == ' '))
+                {
+                    *out_key = content.substr(0, i);
+                    StringView rest = content.substr(i + 1);
+                    strip_leading_whitespace(rest);
+                    *out_rest = rest;
+                    return true;
+                }
+            }
+            return false;
         }
 
         static size_t get_indent(StringView line)
@@ -69,214 +206,70 @@ namespace parsley { namespace detail
             size_t indent = 0;
             while (indent < line.size() && line[indent] == ' ')
                 ++indent;
-
             return indent;
         }
 
-        static size_t remove_trailing_whitespace(StringView& line)
+        static size_t strip_leading_whitespace(StringView& sv)
         {
-            const size_t indent = get_indent(line);
-            line.remove_prefix(indent);
+            const size_t indent = get_indent(sv);
+            sv.remove_prefix(indent);
             return indent;
         }
 
-        bool should_skip_line()
+        void skip_structural_noise()
         {
-            // Ignore blank lines/comments/start marker
-            return line_.empty() || line_.starts_with("#") || line_.starts_with("---");
-        }
-
-        void handle_nesting()
-        {
-            // Shallower indentation: close nested block(s).
-            while (indent_ < frames_.top().indent)
-                finalize_top_frame();
-            
-            if (indent_ > frames_.top().indent)
+            while (!eof())
             {
-                // Deeper indentation: indicates the start of a new nested block.
+                StringView t = line_;
+                strip_leading_whitespace(t);
 
-                // We don't know if the new block is a sequence or mapping, so we push a generic frame.
-                frames_.push({ indent_, false, false, {}, Node{} });
-            }
-            else
-            {
-                // New sibling at the same level: if the previous line was expecting a value, 
-                // it's actually null.
-                resolve_pending(frames_.top());
-            }
-        }
-
-        bool is_end_marker()
-        {
-            return line_.starts_with("...");
-        }
-
-        void process_content()
-        {
-            StringView key;
-            StringView value;
-
-            if (is_sequence_marker())
-            {
-                frames_.top().is_block_start = true;
-                process_sequence_node();
-            }
-            else if (is_mapping_kvp(&key, &value))
-            {
-                frames_.top().is_block_start = true;
-                process_map_node(key, value);
-            }
-            else
-            {
-                process_scalar_node();
-            }
-        }
-
-        bool is_sequence_marker()
-        {
-            if (line_.empty())
-                return false;
-
-            if (line_.size() == 1 && line_.front() == '-')
-                return true;
-
-            if (line_.starts_with("- "))
-                return true;
-
-            return false;
-        }
-
-        bool is_mapping_kvp(StringView* out_key, StringView* out_value)
-        {
-            for (size_t i = 0; i < line_.size(); ++i)
-            {
-                if (line_[i] == ':' && (i + 1 == line_.size() || line_[i + 1] == ' '))
+                if (t.empty() || t.starts_with("#") || t.starts_with("---"))
                 {
-                    StringView key = line_.substr(0, i);
-
-                    StringView value = line_.substr(i + 1);
-                    remove_trailing_whitespace(value);
-
-                    *out_key = key;
-                    *out_value = value;
-
-                    return true;
+                    read_line();
+                    continue;
                 }
-            }
 
-            return false;
-        }
+                if (t.starts_with("..."))
+                {
+                    eof_ = true;
+                    return;
+                }
 
-        void process_sequence_node()
-        {            
-            // strip "-" and any following spaces
-            line_.remove_prefix(1);
-            const size_t extra_indent = 1 + remove_trailing_whitespace(line_);
-
-            if (line_.empty())
-            {
-                // Line ended without a value, expect it on the next line.
-                frames_.top().expecting_value = true;
                 return;
             }
-
-            StringView key;
-            StringView value;
-            if (is_mapping_kvp(&key, &value))
-            {
-                // "- key: value": the sequence item's value is itself a mapping. 
-                // Open a frame anchored at the key's column so later lines aligned 
-                // with it are treated as siblings of this map, not as a new sequence entry.
-                frames_.push({ indent_ + extra_indent, true, false, {}, Node{} });
-
-                process_map_node(key, value);
-                return;
-            }
-            
-            // Plain scalar entry, push the value.
-            frames_.top().node.push_back(Node(line_.to_owned()));
         }
 
-        void process_map_node(StringView key, StringView value)
+        bool current_line_is_blank()
         {
-            assert(!key.empty()); // key should never be empty
-
-            if (value.empty())
-            {
-                // Key is present, but value is missing. We expect the value on the next lines.
-                frames_.top().expecting_value = true;
-                frames_.top().pending_key = key.to_owned();
-                return;
-            }
-
-            // Key and value are both present, insert them.
-            frames_.top().node[key.to_owned()] = Node(value.to_owned());
+            StringView t = line_;
+            strip_leading_whitespace(t);
+            return t.empty();
         }
 
-        void process_scalar_node()
+        size_t current_indent()
         {
-            frames_.top().node = Node(line_.to_owned());
+            return get_indent(line_);
         }
 
-        Node unwind_frames()
+        StringView current_content()
         {
-            // Unwind any remaining open levels (except for the root node)
-            while (frames_.size() > 1)
-                finalize_top_frame();
-
-            // Resolve the root node (e.g. root sequence of `null`)
-            resolve_pending(frames_.top());
-            Node root = std::move(frames_.top().node);
-            frames_.pop();
-
-            return root;
+            StringView line = line_;
+            line.remove_prefix(current_indent());
+            return line;
         }
 
-        // TODO: this and its nested functions need a refactor
-        void finalize_top_frame()
+        void read_line()
         {
-            Frame finished = std::move(frames_.top());
-            frames_.pop();
-
-            resolve_pending(finished);
-            attach(std::move(finished));
+            eof_ = !in_->get_line(line_);
         }
 
-        static void resolve_pending(Frame& f)
+        bool eof() const
         {
-            if (!f.expecting_value)
-                return;
-
-            if (!f.pending_key.empty())
-                f.node[f.pending_key] = Node();
-            else
-                f.node.push_back(Node());
-
-            f.expecting_value = false;
-            f.pending_key = {};
+            return eof_;
         }
 
-        // Attach a just-closed child block to its parent: as a pending key's value,
-        // or as the next sequence entry.
-        void attach(Frame&& finished)
-        {
-            if (!finished.is_block_start)
-                return;
-
-            Frame& parent = frames_.top();
-
-            if (parent.expecting_value && !parent.pending_key.empty())
-                parent.node[parent.pending_key] = std::move(finished.node);
-            else
-                parent.node.push_back(std::move(finished.node));
-
-            parent.expecting_value = false;
-            parent.pending_key = {};
-        }
-
-        std::stack<Frame> frames_;
+        Cursor* in_;
         StringView line_;
-        size_t indent_;
+        bool eof_ = false;
     };
 }}

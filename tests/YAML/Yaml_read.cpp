@@ -378,10 +378,61 @@ workers:
 
     SUBCASE("deserialize - end marker")
     {
-        Node n1 = parsley::read<YAML>("---\na: 1\nb: 2\n  ...\nc: 3"); // shouldn't read "c: 3"
+        Node n1 = parsley::read<YAML>("---\na: 1\nb: 2\n...\nc: 3"); // shouldn't read "c: 3"
         REQUIRE(n1.is_map());
         REQUIRE(n1.size() == 2);
         REQUIRE(n1["a"] == 1);
         REQUIRE(n1["b"] == 2);
+    }
+
+    SUBCASE("deserialize - plain multi-line scalar")
+    {
+        REQUIRE(parsley::read<YAML>(R"(---
+this is a
+  folded value that
+  keeps going)") == "this is a folded value that keeps going");
+
+        Node map = parsley::read<YAML>(R"(---
+first: this is a
+  folded first item
+second: this is a
+  folded second item)");
+        REQUIRE(map["first"] == "this is a folded first item");
+        REQUIRE(map["second"] == "this is a folded second item");
+
+        Node seq = parsley::read<YAML>(R"(---
+- this is a
+  folded first item
+- this is a
+  folded second item)");
+        REQUIRE(seq.size() == 2);
+        REQUIRE(seq[0] == "this is a folded first item");
+        REQUIRE(seq[1] == "this is a folded second item");
+    }
+
+    SUBCASE("deserialize - multi-line scalar with paragraph break")
+    {
+        // blank line mid-fold -> joined with '\n' instead of ' '
+        Node map = parsley::read<YAML>(R"(---
+summary: this is a
+  folded value that
+  keeps going
+
+  and this is a new paragraph)");
+
+        REQUIRE(map["summary"] ==
+            "this is a folded value that keeps going\nand this is a new paragraph");
+    }
+
+    SUBCASE("deserialize - sequence scalar fold does not swallow next mapping item")
+    {
+        Node seq = parsley::read<YAML>(R"(---
+- this is a
+  folded scalar
+- key: value)");
+
+        REQUIRE(seq.size() == 2);
+        REQUIRE(seq[0] == "this is a folded scalar");
+        REQUIRE(seq[1]["key"] == "value");
     }
 }
