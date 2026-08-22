@@ -72,7 +72,7 @@ namespace parsley { namespace detail
                 if (is_mapping_kvp(value, key, rest))
                     out_seq.push_back(parse_mapping_lines(item_indent, &key, &rest));
                 else
-                    out_seq.push_back(parse_scalar_value(value, item_indent - 1)); // TODO: that -1 is hacky
+                    out_seq.push_back(parse_scalar_value(value, item_indent));
             }
 
             return out_seq.size() > 0;
@@ -121,9 +121,9 @@ namespace parsley { namespace detail
             if (content.empty())
                 return false;
 
-            StringView s = content;
+            StringView& s = content;
 
-            if (is_quote(s.front())) // TODO: could `s` be empty?
+            if (is_quote(s.front()))
             {
                 const char quote = s.front();
                 s.remove_prefix(1); // remove the opening quote
@@ -206,13 +206,15 @@ namespace parsley { namespace detail
                 return;
             }
 
-            map[key] = parse_scalar_value(rest, key_indent);
+            map[key] = parse_scalar_value(rest, key_indent + 1); // value must be deeper
         }
 
         // --- Scalar Details -------------------------------------------------
 
         // Cursor must already be advanced past `first_line`'s physical line
         // (every call site does `read_line()` right before calling this).
+        // `min_indent` is the minimum column a continuation line must
+        // reach to be folded in - see parse_scalar_folded.
         // Single entry point for "read a scalar starting here" - dispatches
         // to the quoted or plain reader and lets either one pull in as many
         // continuation lines as it needs.
@@ -224,7 +226,7 @@ namespace parsley { namespace detail
             return parse_scalar_folded(first_line.to_owned(), min_indent);
         }
 
-        // Folds in following lines indented deeper than min_indent:
+        // Folds in lines whose indent reaches min_indent or deeper:
         // consecutive lines join with a space, a blank line in the
         // run joins with '\n' instead.
         Node parse_scalar_folded(std::string first_line, size_t min_indent)
@@ -241,7 +243,7 @@ namespace parsley { namespace detail
                     continue;
                 }
 
-                if (indent_ <= min_indent)
+                if (indent_ < min_indent)
                     break; // dedent / sibling: fold ends
 
                 StringView content = content_;
@@ -324,6 +326,8 @@ namespace parsley { namespace detail
         // while still inside the quotes; for a double-quoted scalar ending
         // in a lone trailing '\', *line_continuation is set to true so the
         // caller knows the line break was escaped away, not folded.
+        // line_continuation may be null for callers (e.g. is_mapping_kvp)
+        // that only care about single-line quoted tokens.
         bool parse_quoted_line(
             StringView& s, 
             char quote, 
