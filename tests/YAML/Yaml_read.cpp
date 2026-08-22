@@ -410,7 +410,7 @@ second: this is a
         REQUIRE(seq[1] == "this is a folded second item");
     }
 
-    SUBCASE("deserialize - multi-line scalar with paragraph break")
+    SUBCASE("deserialize - plain multi-line scalar with paragraph break")
     {
         // blank line mid-fold -> joined with '\n' instead of ' '
         Node map = parsley::read<YAML>(R"(---
@@ -434,5 +434,78 @@ summary: this is a
         REQUIRE(seq.size() == 2);
         REQUIRE(seq[0] == "this is a folded scalar");
         REQUIRE(seq[1]["key"] == "value");
+    }
+
+    SUBCASE("deserialize - quoted scalars")
+    {
+        Node n1 = parsley::read<YAML>(R"("quoted key": value)");
+        REQUIRE(n1["quoted key"] == "value");
+
+        Node n2 = parsley::read<YAML>(R"('single quoted': value)");
+        REQUIRE(n2["single quoted"] == "value");
+
+        Node n3 = parsley::read<YAML>(R"(plain: "quoted value: with a colon inside")");
+        REQUIRE(n3["plain"] == "quoted value: with a colon inside");
+
+        Node n4 = parsley::read<YAML>(R"(- "quoted item")");
+        REQUIRE(n4[0] == "quoted item");
+
+        Node n5 = parsley::read<YAML>(R"("has a : colon inside": still works.)");
+        REQUIRE(n5["has a : colon inside"] == "still works.");
+    }
+
+    SUBCASE("deserialize - escape sequences")
+    {
+        Node n = parsley::read<YAML>(R"(
+"\0": "\0"
+"\a": "\a"
+"\b": "\b"
+"\t": "\t"
+"\n": "\n"
+"\v": "\v"
+"\f": "\f"
+"\r": "\r"
+"\e": "\e"
+"\"": "\""
+"\/": "\/"
+"\\": "\\"
+"\N": "\N"
+"\_": "\_"
+"\L": "\L"
+"\P": "\P"
+"\x41\x42\x43": "\x41\x42\x43"
+"\u4E2D": "\u4E2D"
+"\U0001F60D": "\U0001F60D"
+)");
+
+        //REQUIRE(n["\0"] == "\0"); // TODO: this is a headache for later
+        REQUIRE(n["\a"] == "\a");
+        REQUIRE(n["\b"] == "\b");
+        REQUIRE(n["\t"] == "\t");
+        REQUIRE(n["\n"] == "\n");
+        REQUIRE(n["\v"] == "\v");
+        REQUIRE(n["\f"] == "\f");
+        REQUIRE(n["\r"] == "\r");
+        REQUIRE(n["\e"] == "\e");
+        REQUIRE(n["\""] == "\"");
+        REQUIRE(n["/"] == "/");
+        REQUIRE(n["\\"] == "\\");
+        REQUIRE(n["\u0085"] == "\u0085");
+        REQUIRE(n["\u00A0"] == "\u00A0");
+        REQUIRE(n["\u2028"] == "\u2028");
+        REQUIRE(n["\u2029"] == "\u2029");
+        REQUIRE(n["ABC"] == "ABC");
+        REQUIRE(n["中"] == "中");
+        REQUIRE(n["😍"] == "😍");
+    }
+
+    SUBCASE("deserialize - multi-line quoted scalar")
+    {
+        Node n = parsley::read<YAML>(R"(
+"Multi-line
+quoted scalar"
+)");
+
+        REQUIRE(n == "Multi-line quoted scalar");
     }
 }

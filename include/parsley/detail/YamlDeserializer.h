@@ -2,6 +2,7 @@
 
 #include "parsley/Node.h"
 #include "parsley/config/YamlDeserializerConfig.h"
+#include "parsley/detail/escape.h"
 
 #include <string>
 
@@ -18,66 +19,69 @@ namespace parsley { namespace detail
             in_ = &in;
             read_line();
 
-            skip_structural_noise();
+            skip_structural();
 
-            if (eof())
-                return {};
+            if (eof_)
+                return {}; // no contents -> null
 
-            return parse_block(current_indent());
+            return parse_block(indent_);
         }
 
     private:
         Node parse_block(size_t min_indent)
         {
-            skip_structural_noise();
+            skip_structural();
 
-            if (eof() || current_indent() < min_indent)
-                return {}; // nothing here at this level -> null
+            if (eof_ || indent_ < min_indent)
+                return {}; // nothing here at the required level -> null
 
-            size_t indent = current_indent();
-            StringView content = current_content();
-            
             Node node;
 
-            if (try_parse_sequence(content, indent, &node))
+            if (try_parse_sequence(indent_, &node))
                 return node;
 
-            if (try_parse_mapping(content, indent, &node))
+            if (try_parse_mapping(indent_, &node))
                 return node;
 
-            return parse_scalar(indent);
+            return parse_scalar(indent_);
         }
 
-        bool try_parse_sequence(StringView content, size_t indent, Node* out_seq)
+        bool try_parse_sequence(size_t required_indent, Node* out_seq)
         {
-            if (!is_sequence_marker(content))
-                return false;
-
-            while (!eof() && current_indent() == indent && is_sequence_marker(current_content()))
+            while (!eof_ && indent_ == required_indent && is_sequence_marker(content_))
             {
-                StringView content = current_content();
-                content.remove_prefix(1); // '-'
-                size_t extra = 1 + strip_leading_whitespace(content);
-                size_t item_indent = indent + extra;
+                StringView value = content_.substr(1); // remove '-'
+                size_t extra = 1 + strip_leading_whitespace(value);
+                size_t item_indent = required_indent + extra;
 
-                if (content.empty())
+                if (value.empty())
                 {
+                    // Lone '-' without a value on the same line.
+                    // Go to the next line to find a value.
                     read_line();
                     out_seq->push_back(parse_block(item_indent));
                     continue;
                 }
 
-                StringView key, rest;
-                if (is_mapping_kvp(content, &key, &rest))
+                std::string key;
+                StringView rest;
+                if (is_mapping_kvp(value, &key, &rest))
                 {
                     read_line();
-                    Node map;
-                    parse_mapping_lines(map, item_indent, &key, &rest);
+                    Node map = parse_mapping_lines(item_indent, &key, &rest);
                     out_seq->push_back(std::move(map));
+                }
+                else if (is_quote(value[0]))
+                {
+                    // TODO: do we really need a completely separate function for quoted?
+                    // TODO: this doesn't fold.
+                    Node scalar = parse_quoted_scalar_value(value);
+                    read_line();
+                    out_seq->push_back(std::move(scalar));
                 }
                 else
                 {
-                    std::string text = content.to_owned();
+                    std::string text = value.to_owned();
                     read_line();
                     out_seq->push_back(parse_scalar_folded(std::move(text), item_indent - 1));
                 }
@@ -86,14 +90,15 @@ namespace parsley { namespace detail
             return out_seq->size() > 0;
         }
 
-        bool try_parse_mapping(StringView content, size_t indent, Node* out_map)
+        bool try_parse_mapping(size_t required_indent, Node* out_map)
         {
-            StringView key, rest;
-            if (!is_mapping_kvp(current_content(), &key, &rest))
+            std::string key;
+            StringView rest;
+            if (!is_mapping_kvp(content_, &key, &rest))
                 return false;
 
             read_line();
-            parse_mapping_lines(*out_map, indent, &key, &rest);
+            *out_map = parse_mapping_lines(required_indent, &key, &rest);
             return true;
         }
 
@@ -102,63 +107,89 @@ namespace parsley { namespace detail
         // pair (the caller peeled it off a "- key: value" or lookahead line
         // before knowing it was starting a mapping) and get added first,
         // without re-reading a line for it.
-        void parse_mapping_lines(
-            Node& out_map,
-            size_t indent,
-            const StringView* first_key = nullptr,
+        Node parse_mapping_lines(
+            size_t required_indent,
+            const std::string* first_key = nullptr,
             const StringView* first_rest = nullptr)
         {
-            if (first_key)
-                add_kvp(out_map, *first_key, *first_rest, indent);
+            Node map;
 
-            while (!eof() && current_indent() == indent)
+            if (first_key)
+                add_kvp(map, *first_key, *first_rest, required_indent);
+
+            while (!eof_ && indent_ == required_indent)
             {
-                StringView key, rest;
-                if (!is_mapping_kvp(current_content(), &key, &rest))
+                std::string key;
+                StringView rest;
+                if (!is_mapping_kvp(content_, &key, &rest))
                     break;
 
                 read_line();
-                add_kvp(out_map, key, rest, indent);
+                add_kvp(map, key, rest, required_indent);
             }
+
+            return map;
         }
 
-        void add_kvp(Node& map, StringView key, StringView rest, size_t key_indent)
+        void add_kvp(Node& map, const std::string& key, StringView rest, size_t key_indent)
         {
             if (rest.empty())
-                map[key.to_owned()] = parse_block(key_indent + 1); // value must be deeper
-            else
-                map[key.to_owned()] = parse_scalar_folded(rest.to_owned(), key_indent);
+            {
+                map[key] = parse_block(key_indent + 1); // value must be deeper
+                return;
+            }
+
+            if (is_quote(rest[0]))
+            {
+                map[key] = parse_quoted_scalar_value(rest);
+                return;
+            }
+
+            map[key] = parse_scalar_folded(rest.to_owned(), key_indent);
         }
 
         Node parse_scalar(size_t indent)
         {
-            std::string text = current_content().to_owned();
+            StringView content = content_;
+
+            if (!content.empty() && is_quote(content[0]))
+            {
+                Node node = parse_quoted_scalar_value(content);
+                read_line();
+                return node;
+            }
+
+            std::string text = content.to_owned();
             read_line();
             return parse_scalar_folded(std::move(text), indent);
         }
 
-        // Folds in following lines indented deeper than min_indent: 
-        // consecutive lines join with a space, a blank line in the 
+        // Folds in following lines indented deeper than min_indent:
+        // consecutive lines join with a space, a blank line in the
         // run joins with '\n' instead.
+        //
+        // Only used for PLAIN scalars - quoted scalars go through
+        // parse_quoted_scalar_value instead and don't fold (yet).
         Node parse_scalar_folded(std::string first_line, size_t min_indent)
         {
             std::string& text = first_line;
             size_t blank_lines = 0;
 
-            while (!eof())
+            while (!eof_)
             {
-                if (current_line_is_blank())
+                if (content_.empty())
                 {
                     ++blank_lines;
                     read_line();
                     continue;
                 }
 
-                if (current_indent() <= min_indent)
+                if (indent_ <= min_indent)
                     break; // dedent / sibling: fold ends
 
-                StringView content = current_content();
-                StringView key, rest;
+                StringView content = content_;
+                std::string key;
+                StringView rest;
                 if (is_sequence_marker(content) || is_mapping_kvp(content, &key, &rest))
                     break; // deeper line that's actually a new construct
 
@@ -169,6 +200,71 @@ namespace parsley { namespace detail
             }
 
             return Node(std::move(text));
+        }
+
+        // --- quoted scalars ---------------------------------------------------
+
+        static bool is_quote(char c)
+        {
+            return c == '"' || c == '\'';
+        }
+
+        // TODO: currently doesn't fold multi-line quoted scalars
+        Node parse_quoted_scalar_value(StringView content)
+        {
+            std::string text;
+            parse_quoted_body(content, &text);
+            return Node(std::move(text));
+        }
+
+        // Consumes a quoted token from the start of `s` (s[0] must be a
+        // quote character). Advances `s` past the closing quote on success.
+        // Returns false if no closing quote was found on this line.
+        bool parse_quoted_body(StringView& s, std::string* parsed)
+        {
+            // Read and consume quote to identify type (single-quoted vs. double-quoted)
+            const char quote = s.front();
+            s.remove_prefix(1);
+
+            while (!s.empty())
+            {
+                char c = s.front();
+
+                // ' in single-quoted scalar
+                if (quote == '\'' && c == '\'')
+                {
+                    if (s.size() > 1 && s[1] == '\'')
+                    {
+                        // '' -> literal '
+                        *parsed += '\'';
+                        s.remove_prefix(2);
+                        continue;
+                    }
+
+                    s.remove_prefix(1); // closing quote
+                    
+                    return true;
+                }
+
+                // " in double-quoted scalar
+                if (quote == '"' && c == '"')
+                {
+                    s.remove_prefix(1); // closing quote
+                    return true;
+                }
+
+                // Escape sequences
+                if (quote == '"' && c == '\\' && s.size() > 1)
+                {
+                    parse_escape_sequence(s, *parsed);
+                    continue;
+                }
+
+                *parsed += c;
+                s.remove_prefix(1);
+            }
+
+            return false;
         }
 
         // --- line helpers ---------------------------------------------------
@@ -184,21 +280,51 @@ namespace parsley { namespace detail
             return content.starts_with("- ");
         }
 
-        // TODO: not quote-aware - `"a: b": c` misparses.
-        bool is_mapping_kvp(StringView content, StringView* out_key, StringView* out_rest)
+        // Detects "key: rest" at the start of `content`, where key may be
+        // plain or single/double-quoted. A colon inside a quoted key does
+        // NOT end the key (that's the whole reason this needs to be
+        // quote-aware, vs. just scanning for the first ':').
+        bool is_mapping_kvp(StringView content, std::string* out_key, StringView* out_rest)
         {
-            for (size_t i = 0; i < content.size(); ++i)
+            if (content.empty())
+                return false;
+
+            StringView s = content;
+            std::string key;
+
+            if (is_quote(s[0]))
             {
-                if (content[i] == ':' && (i + 1 == content.size() || content[i + 1] == ' '))
-                {
-                    *out_key = content.substr(0, i);
-                    StringView rest = content.substr(i + 1);
-                    strip_leading_whitespace(rest);
-                    *out_rest = rest;
-                    return true;
-                }
+                if (!parse_quoted_body(s, &key))
+                    return false; // unterminated quote on this line
             }
-            return false;
+            else
+            {
+                size_t i = 0;
+                for (; i < s.size(); ++i)
+                {
+                    if (s[i] == ':' && (i + 1 == s.size() || s[i + 1] == ' '))
+                        break;
+                }
+                if (i == s.size())
+                    return false; // no colon marker found
+
+                key = s.substr(0, i).to_owned();
+                s.remove_prefix(i);
+            }
+
+            // s now starts right where the key token ended - must be ':'
+            // followed by a space or end of line to count as a mapping marker.
+            if (s.empty() || s[0] != ':')
+                return false;
+            if (s.size() > 1 && s[1] != ' ')
+                return false;
+
+            s.remove_prefix(1); // ':'
+            strip_leading_whitespace(s);
+
+            *out_key = std::move(key);
+            *out_rest = s;
+            return true;
         }
 
         static size_t get_indent(StringView line)
@@ -216,20 +342,21 @@ namespace parsley { namespace detail
             return indent;
         }
 
-        void skip_structural_noise()
+        void skip_structural()
         {
-            while (!eof())
+            while (!eof_)
             {
-                StringView t = line_;
-                strip_leading_whitespace(t);
+                StringView c = content_;
 
-                if (t.empty() || t.starts_with("#") || t.starts_with("---"))
+                // blank lines, full-line comments, start marker
+                if (c.empty() || c.starts_with("#") || c.starts_with("---"))
                 {
                     read_line();
                     continue;
                 }
 
-                if (t.starts_with("..."))
+                // end marker
+                if (c.starts_with("..."))
                 {
                     eof_ = true;
                     return;
@@ -239,37 +366,22 @@ namespace parsley { namespace detail
             }
         }
 
-        bool current_line_is_blank()
-        {
-            StringView t = line_;
-            strip_leading_whitespace(t);
-            return t.empty();
-        }
-
-        size_t current_indent()
-        {
-            return get_indent(line_);
-        }
-
-        StringView current_content()
-        {
-            StringView line = line_;
-            line.remove_prefix(current_indent());
-            return line;
-        }
-
         void read_line()
         {
-            eof_ = !in_->get_line(line_);
-        }
+            if (!in_->get_line(line_))
+            {
+                eof_ = true;
+                return;
+            }
 
-        bool eof() const
-        {
-            return eof_;
+            indent_ = get_indent(line_);
+            content_ = line_.substr(indent_);
         }
 
         Cursor* in_;
         StringView line_;
+        size_t indent_;
+        StringView content_;
         bool eof_ = false;
     };
 }}
