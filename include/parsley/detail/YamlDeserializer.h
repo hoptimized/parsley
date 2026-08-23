@@ -17,19 +17,15 @@ namespace parsley { namespace detail
         Node read(Cursor& in)
         {
             in_ = &in;
-            read_line();
-
-            skip_structural();
-
-            if (eof_)
-                return {}; // no contents -> null
-
-            return parse_block(indent_);
+            read_line(); // read the first line
+            return parse_block(0);
         }
 
     private:
         // --- Block Parsing --------------------------------------------------
 
+        // Parses an unknown block (scalar, sequence, map) at `min_indent` or deeper.
+        // Returns a null-node if dedent is detected.
         Node parse_block(size_t min_indent)
         {
             skip_structural();
@@ -48,29 +44,44 @@ namespace parsley { namespace detail
             return parse_scalar(indent_);
         }
 
+        // Parses a full sequence with all of its items and nested structures.
+        // Each item's '-' marker must be at exactly `required_indent`.
         bool try_parse_sequence(size_t required_indent, Node& out_seq)
         {
             while (!eof_ && indent_ == required_indent && is_sequence_marker(content_))
             {
-                // Parse the key line
-                StringView value = content_.substr(1); // remove '-'
+                // Parse the line containing the '-' marker of the current item.
+                StringView value = content_.substr(1); // remove leading '-'
                 size_t extra = 1 + strip_leading_whitespace(value);
                 size_t item_indent = required_indent + extra;
+
+                // Consume line and move on.
                 read_line();
 
-                // Lone '-' without a value on the same line; go to the next line to find a value.     
                 if (value.empty())
                 {                                   
+                    // This is a lone '-' marker without a value on the same line.
+                    // Expect the value on the next line and parse it recursively as a block.
                     out_seq.push_back(parse_block(item_indent));
                     continue;
                 }
 
-                // Found a value on the same line as the key; try to parse mapping or scalar.
+                // TODO:
+                // Actually, we could also see a sequence here. Why not just parse_block?
+                // The issue is that the indent calculations would be off due to the - on the same line,
+                // similar to the map thing where we parse the first line manually here.
+                // Options:
+                //  - also parse the first item here, then do something like parse_sequence_items
+                //  - potentially cleaner: use try_parse_mapping and try_parse_sequence here,
+                //    somehow make them aware this in an inline-nested value
 
-                std::string key;
-                StringView rest;
-                if (is_mapping_kvp(value, key, rest))
-                    out_seq.push_back(parse_mapping_lines(item_indent, &key, &rest));
+                // Found a value on the same line as the '-' marker; try to parse mapping or scalar.
+                std::string map_key;
+                StringView map_value;
+                //if (is_sequence_marker(value))
+                //    out_seq.push_back(parse_sequence_items(item_indent));
+                if (is_mapping_kvp(value, map_key, map_value))
+                    out_seq.push_back(parse_mapping_lines(item_indent, &map_key, &map_value));
                 else
                     out_seq.push_back(parse_scalar_value(value, item_indent));
             }
@@ -202,11 +213,14 @@ namespace parsley { namespace detail
         {
             if (rest.empty())
             {
-                map[key] = parse_block(key_indent + 1); // value must be deeper
+                // Value not on the key line; expect the value on the next line.
+                // In this situation, the value could be anything (scalar, sequence, map).
+                map[key] = parse_block(key_indent + 1); // +1 because value must be deeper
                 return;
             }
 
-            map[key] = parse_scalar_value(rest, key_indent + 1); // value must be deeper
+            // Value on same line as the key; only a scalar is permitted here.
+            map[key] = parse_scalar_value(rest, key_indent + 1);
         }
 
         // --- Scalar Details -------------------------------------------------
@@ -218,12 +232,12 @@ namespace parsley { namespace detail
         // Single entry point for "read a scalar starting here" - dispatches
         // to the quoted or plain reader and lets either one pull in as many
         // continuation lines as it needs.
-        Node parse_scalar_value(StringView first_line, size_t min_indent)
+        Node parse_scalar_value(StringView first_line, size_t indent)
         {
             if (!first_line.empty() && is_quote(first_line[0]))
                 return parse_quoted_scalar_value(first_line);
 
-            return parse_scalar_folded(first_line.to_owned(), min_indent);
+            return parse_scalar_folded(first_line.to_owned(), indent);
         }
 
         // Folds in lines whose indent reaches min_indent or deeper:
