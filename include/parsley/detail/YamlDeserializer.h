@@ -29,7 +29,7 @@ namespace parsley { namespace detail
          * 
          * @param min_indent   Minimum indentation required for this block. If the 
          *                     first meaningful text starts at a smaller indentation 
-         *                      than `min_indent`, a null-Node will be returned.
+         *                     than `min_indent`, a null-Node will be returned.
          * @param ignore_chars Number of leading characters to ignore on the first line
          *                     of the block. These characters usually belong to an
          *                     enclosing marker on the same physical line, e.g. the 
