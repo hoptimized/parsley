@@ -386,6 +386,14 @@ TEST_CASE("Node - as<T>()")
     }
 }
 
+TEST_CASE("Node - into")
+{
+    Node n = "Test";
+    std::string res;
+    n.into(res);
+    REQUIRE(res == "Test");
+}
+
 TEST_CASE("Node - low-level scalar access")
 {
     SUBCASE("set_scalar / get_scalar round-trip")
