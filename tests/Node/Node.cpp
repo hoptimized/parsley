@@ -243,6 +243,19 @@ TEST_CASE("Node - identity")
         REQUIRE_FALSE(node.is_list());
     }
 
+    SUBCASE("has_key indicates correctly whether a Node has a key")
+    {
+        Node m;
+        m["a"] = 1;
+        REQUIRE(m.has_key("a"));
+        REQUIRE_FALSE(m.has_key("b"));
+
+        Node s;
+        s[0] = "a";
+        REQUIRE_FALSE(s.has_key("a"));
+        REQUIRE_FALSE(s.has_key("0"));
+    }
+
     SUBCASE("type() returns the correct enum value")
     {
         Node n;

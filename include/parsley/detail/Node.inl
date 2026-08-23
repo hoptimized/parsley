@@ -74,6 +74,12 @@ namespace parsley
     }
 
     template <typename T>
+    inline bool Node::has_key(const T& key) const
+    {
+        return is_map() && find_map_value(key) != nullptr;
+    }
+
+    template <typename T>
     inline Node& Node::operator[](T key) 
     {
         return *get_collection_node(key, /*allow_insert=*/true);
