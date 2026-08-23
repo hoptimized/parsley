@@ -24,76 +24,99 @@ namespace parsley { namespace detail
     private:
         // --- Block Parsing --------------------------------------------------
 
-        // Parses an unknown block (scalar, sequence, map) at `min_indent` or deeper.
-        // Returns a null-node if dedent is detected.
-        Node parse_block(size_t min_indent)
+        /******************************************************************************
+         * Parses an unknown block (scalar, sequence, map) at `min_indent` or deeper.
+         * 
+         * @param min_indent   Minimum indentation required for this block. If the 
+         *                     first meaningful text starts at a smaller indentation 
+         *                      than `min_indent`, a null-Node will be returned.
+         * @param ignore_chars Number of leading characters to ignore on the first line
+         *                     of the block. These characters usually belong to an
+         *                     enclosing marker on the same physical line, e.g. the 
+         *                     "- " in "- - a" or the "a: " in "a: - ". The ignored 
+         *                     characters have already been processed by the caller but
+         *                     not consumed from the cursor.
+         * 
+         * @return A Node representing the parsed block.
+         ******************************************************************************/
+        Node parse_block(size_t min_indent, size_t ignore_chars = 0)
         {
-            skip_structural();
+            const bool is_inline_block = ignore_chars > 0;
 
-            if (eof_ || indent_ < min_indent)
-                return {}; // nothing here at the required level -> null
+            if (!is_inline_block)
+                skip_structural(); // only meaningful when resuming a fresh line
+
+            if (eof_)
+                return {};
+
+            // TODO: this looks wrong, probably shouldn't adjust indent at the call site
+            const size_t indent = indent_ + ignore_chars;
+            if (indent < min_indent)
+                return {};
 
             Node node;
 
-            if (try_parse_sequence(indent_, node))
+            if (try_parse_sequence(indent, ignore_chars, node))
                 return node;
 
-            if (try_parse_mapping(indent_, node))
+            if (try_parse_mapping(indent, ignore_chars, node))
                 return node;
 
-            return parse_scalar(indent_);
+            return parse_scalar(indent, ignore_chars);
         }
 
         // Parses a full sequence with all of its items and nested structures.
         // Each item's '-' marker must be at exactly `required_indent`.
-        bool try_parse_sequence(size_t required_indent, Node& out_seq)
+        bool try_parse_sequence(size_t required_indent, size_t ignore_chars, Node& out_seq)
         {
-            while (!eof_ && indent_ == required_indent && is_sequence_marker(content_))
+            while (!eof_)
             {
-                // Parse the line containing the '-' marker of the current item.
-                StringView value = content_.substr(1); // remove leading '-'
+                // TODO: this is ignoring chars on EACH line. Seems wrong. Should only ignore on first line;
+                // later lines could have a dedent in the ignored chars range.
+                // As a note, try_parse_mapping also only ignores chars on the first line.
+                StringView content = content_.substr(ignore_chars);
+                size_t indent = indent_ + ignore_chars;
+
+                if (indent != required_indent || !is_sequence_marker(content))
+                    break;
+
+                StringView value = content.substr(1); // remove leading '-'
                 size_t extra = 1 + strip_leading_whitespace(value);
                 size_t item_indent = required_indent + extra;
 
-                // Consume line and move on.
-                read_line();
-
                 if (value.empty())
-                {                                   
-                    // This is a lone '-' marker without a value on the same line.
-                    // Expect the value on the next line and parse it recursively as a block.
+                {
+                    // Nothing more on this physical line; consume it and expect
+                    // the item's value on the following line(s).
+                    read_line();
                     out_seq.push_back(parse_block(item_indent));
-                    continue;
+                }
+                else
+                {
+                    // A value follows the marker on this same physical line -
+                    // could be a scalar, a mapping, or (via chained markers like
+                    // "- - a") another nested sequence. `value_ignore` is how
+                    // many characters of the *real* content_ sit before `value`
+                    // starts; parse_block recomputes content/indent from it
+                    // itself, and is the one that eventually calls read_line()
+                    // for this physical line, whichever branch it dispatches to.
+                    size_t value_ignore = item_indent - indent_;
+                    out_seq.push_back(parse_block(item_indent, value_ignore));
                 }
 
-                // TODO:
-                // Actually, we could also see a sequence here. Why not just parse_block?
-                // The issue is that the indent calculations would be off due to the - on the same line,
-                // similar to the map thing where we parse the first line manually here.
-                // Options:
-                //  - also parse the first item here, then do something like parse_sequence_items
-                //  - potentially cleaner: use try_parse_mapping and try_parse_sequence here,
-                //    somehow make them aware this in an inline-nested value
-
-                // Found a value on the same line as the '-' marker; try to parse mapping or scalar.
-                std::string map_key;
-                StringView map_value;
-                //if (is_sequence_marker(value))
-                //    out_seq.push_back(parse_sequence_items(item_indent));
-                if (is_mapping_kvp(value, map_key, map_value))
-                    out_seq.push_back(parse_mapping_lines(item_indent, &map_key, &map_value));
-                else
-                    out_seq.push_back(parse_scalar_value(value, item_indent));
+                ignore_chars = 0; // any further items come from fresh, real lines
             }
 
             return out_seq.size() > 0;
         }
 
-        bool try_parse_mapping(size_t required_indent, Node& out_map)
+        bool try_parse_mapping(size_t required_indent, size_t ignore_chars, Node& out_map)
         {
+            StringView content = content_.substr(ignore_chars);
+
             std::string key;
             StringView rest;
-            if (!is_mapping_kvp(content_, key, rest))
+            if (!is_mapping_kvp(content, key, rest))
                 return false;
 
             read_line();
@@ -101,9 +124,11 @@ namespace parsley { namespace detail
             return true;
         }
 
-        Node parse_scalar(size_t indent)
+        // Cursor must already be advanced past the current physical line by the
+        // time this returns - it calls read_line() itself, same contract as before.
+        Node parse_scalar(size_t indent, size_t ignore_chars = 0)
         {
-            StringView content = content_;
+            StringView content = content_.substr(ignore_chars);
             read_line();
             return parse_scalar_value(content, indent);
         }
@@ -185,7 +210,7 @@ namespace parsley { namespace detail
         // pair (the caller peeled it off a "- key: value" or lookahead line
         // before knowing it was starting a mapping) and get added first,
         // without re-reading a line for it.
-        Node parse_mapping_lines(
+        Node parse_mapping_lines( // TODO: fold this into try_parse_mapping
             size_t key_indent,
             const std::string* first_key = nullptr,
             const StringView* first_rest = nullptr)

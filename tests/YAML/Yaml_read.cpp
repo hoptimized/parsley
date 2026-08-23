@@ -60,7 +60,7 @@ TEST_CASE("YAML - Deserialize")
         REQUIRE(n.size() == 2);
     }
 
-    /*SUBCASE("deserialize - nested sequences")
+    SUBCASE("deserialize - nested sequences")
     {
         Node n = parsley::read<YAML>(R"(---
 -
@@ -87,7 +87,7 @@ TEST_CASE("YAML - Deserialize")
         REQUIRE(n[1][1] == "e");
         REQUIRE(n[2][0][0] == "f");
         REQUIRE(n[3] == "g");
-    }*/
+    }
 
     SUBCASE("deserialize - root is mapping")
     {
