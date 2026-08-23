@@ -179,15 +179,14 @@ Parsley is still under active development. Planned work includes:
 ### YAML
 
 Missing YAML features to be added:
-- Inline comments, such as `key: value # comment`
-- Single-quoted scalars
-- Double-quoted scalars
-- Escape sequences
-- Multi-line scalars
-- Block scalars (`|` and `>`)
-- Flow style collections (`{...}` and `[...]`)
-- Tags
-- Anchors and aliases
+- Read:
+    - Inline comments, such as `key: value # comment`
+    - Block scalars (`|` and `>`)
+    - Flow style collections (`{...}` and `[...]`)
+    - Tags
+    - Anchors and aliases
+- Write:
+    - to be evaluated
 
 ### JSON
 
