@@ -163,6 +163,7 @@ namespace parsley
 
         template <typename T> T as() const;
 
+        template <typename T> bool has_key(const T& key) const;
         template <typename T> Node& operator[](T key);
         template <typename T> const Node& operator[](T key) const;
 

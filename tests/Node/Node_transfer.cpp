@@ -150,4 +150,20 @@ addresses:
         REQUIRE(parsed.addresses[1].zip_code == 10118);
         REQUIRE(parsed.addresses[1].country == "USA");
     }
+
+#if defined(__cpp_lib_optional)
+    SUBCASE("std::optional")
+    {
+        Node n = std::nullopt;
+        REQUIRE(n.is_null());
+
+        n = std::optional<std::string>{ "Test" };
+        REQUIRE(n == "Test");
+
+        Node map;
+        map["a"] = "foo";
+        REQUIRE(map["a"].as<std::optional<std::string>>() == "foo");
+        REQUIRE(map["b"].as<std::optional<std::string>>() == std::nullopt);
+    }
+#endif
 }

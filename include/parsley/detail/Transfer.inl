@@ -12,6 +12,10 @@
 #include <sstream>
 #include <vector>
 
+#if defined(__cpp_lib_optional)
+#include <optional>
+#endif
+
 namespace parsley
 {
     //-----------------------------------------------------------------------------------------------------
@@ -179,4 +183,37 @@ namespace parsley
                 val.push_back(node[i].as<T>());
         }
     };
+
+    //-----------------------------------------------------------------------------------------------------
+    // std::optional
+
+#if defined(__cpp_lib_optional)
+    template <typename T>
+    struct Transfer<std::optional<T>>
+    {
+        static void write(Node& node, const std::optional<T>& opt)
+        {
+            node.clear();
+            if (opt.has_value())
+                node = opt.value();
+        }
+
+        static void read(const Node& node, std::optional<T>& val)
+        {
+            if (node.is_null())
+                val = std::nullopt;
+            else
+                val = node.as<T>();
+        }
+    };
+
+    template <>
+    struct Transfer<std::nullopt_t>
+    {
+        static void write(Node& node, const std::nullopt_t&)
+        {
+            node.clear();
+        }
+    };
+#endif
 }
