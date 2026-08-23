@@ -159,6 +159,11 @@ addresses:
 
         n = std::optional<std::string>{ "Test" };
         REQUIRE(n == "Test");
+
+        Node map;
+        map["a"] = "foo";
+        REQUIRE(map["a"].as<std::optional<std::string>>() == "foo");
+        REQUIRE(map["b"].as<std::optional<std::string>>() == std::nullopt);
     }
 #endif
 }

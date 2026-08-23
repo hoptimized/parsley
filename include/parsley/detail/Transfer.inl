@@ -197,6 +197,23 @@ namespace parsley
             if (opt.has_value())
                 node = opt.value();
         }
+
+        static void read(const Node& node, std::optional<T>& val)
+        {
+            if (node.is_null())
+                val = std::nullopt;
+            else
+                val = node.as<T>();
+        }
+    };
+
+    template <>
+    struct Transfer<std::nullopt_t>
+    {
+        static void write(Node& node, const std::nullopt_t&)
+        {
+            node.clear();
+        }
     };
 #endif
 }
