@@ -74,6 +74,12 @@ namespace parsley
     }
 
     template <typename T>
+    inline void Node::into(T& out) const
+    {
+        Transfer<T>::read(*this, out);
+    }
+
+    template <typename T>
     inline bool Node::has_key(const T& key) const
     {
         return is_map() && find_map_value(key) != nullptr;
