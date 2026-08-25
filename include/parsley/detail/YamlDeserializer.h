@@ -133,20 +133,21 @@ namespace parsley { namespace detail
                 if (!is_mapping_kvp(content, key, rest))
                     break;
 
-                read_line();
-
                 // Value must be indented deeper than the key (even if on the same line).
                 const size_t value_indent = required_indent + 1;
-
+                
                 if (rest.empty())
                 {
-                    // Value not on the key line; expect the value on the next line.
+                    // Nothing more on this physical line; consume it and expect
+                    // the mapping's value on the following line(s).
+                    read_line();
                     out_map[key] = parse_block(value_indent);
                 }
                 else
                 {
                     // Value on same line as the key; only a scalar is permitted here.
-                    out_map[key] = parse_scalar_value(rest, value_indent);
+                    const size_t value_ignore_chars = content_.size() - rest.size();
+                    out_map[key] = parse_scalar(value_indent, value_ignore_chars);
                 }
 
                 ignore_chars = 0;
@@ -155,11 +156,18 @@ namespace parsley { namespace detail
             return !out_map.empty();
         }
 
+        // Parses a scalar value starting at the current line, adjusted by
+        // `ignore_chars` (chars already consumed by an enclosing construct on
+        // this same physical line, e.g. the "key: " before a same-line value).
         Node parse_scalar(size_t indent, size_t ignore_chars = 0)
         {
-            StringView content = effective_content(ignore_chars);
+            const StringView first_line = effective_content(ignore_chars);
             read_line();
-            return parse_scalar_value(content, indent);
+
+            if (!first_line.empty() && is_quote(first_line[0]))
+                return parse_quoted_scalar_value(first_line);
+
+            return parse_scalar_folded(first_line, indent);
         }
 
         // --- Sequence Details -----------------------------------------------
@@ -235,14 +243,6 @@ namespace parsley { namespace detail
         }
 
         // --- Scalar Details -------------------------------------------------
-
-        Node parse_scalar_value(StringView first_line, size_t indent)
-        {
-            if (!first_line.empty() && is_quote(first_line[0]))
-                return parse_quoted_scalar_value(first_line);
-
-            return parse_scalar_folded(first_line, indent);
-        }
 
         // Folds in lines whose indent reaches min_indent or deeper:
         // consecutive lines join with a space, a blank line in the
