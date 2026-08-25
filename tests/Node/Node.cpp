@@ -247,11 +247,13 @@ TEST_CASE("Node - identity")
     {
         Node m;
         m["a"] = 1;
+        m["b"] = {}; // null value must still register as a valid key
         REQUIRE(m.has_key("a"));
-        REQUIRE_FALSE(m.has_key("b"));
+        REQUIRE(m.has_key("b"));
+        REQUIRE_FALSE(m.has_key("c"));
 
         Node s;
-        s[0] = "a";
+        s[0] = "a"; // sequences don't have keys
         REQUIRE_FALSE(s.has_key("a"));
         REQUIRE_FALSE(s.has_key("0"));
     }
