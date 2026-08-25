@@ -2,6 +2,7 @@
 
 #include "parsley/Node.h"
 #include "parsley/config/YamlDeserializerConfig.h"
+#include "parsley/core/StringView.h"
 #include "parsley/detail/escape.h"
 
 #include <string>
@@ -50,7 +51,7 @@ namespace parsley { namespace detail
                 return {};
 
             // Calculate the effective indent of this block, which may be inlined
-            // (e.g. the "- a" in "  - - a" sits at effective_indent = 4).
+            // (e.g. the "- a" in "  - - a" sits at effective_indent of 4).
             const size_t indent = effective_indent(ignore_chars);
 
             if (indent < min_indent)
@@ -67,46 +68,91 @@ namespace parsley { namespace detail
             return parse_scalar(indent, ignore_chars);
         }
 
-        // Parses a full sequence with all of its items and nested structures.
-        // Each item's '-' marker must be at exactly `required_indent`.
-        // May ignore `ignore_chars` leading characters. These usually belong
-        // to an enclosing construction that has already been processed but
-        // sits on the same physical line as this sequence ("- - a", ignore 2).
+        // Tries to parse a full sequence: all items, including nested structures.
+        // Each item's '-' marker must sit at exactly `required_indent`.
         bool try_parse_sequence(size_t required_indent, size_t ignore_chars, Node& out_seq)
         {
-            if (eof_)
-                return false;
+            out_seq = {};
 
-            // First line gets an adjustment for ignored characters at the beginning.
-            const StringView first_line = effective_content(ignore_chars);
-            const size_t first_line_indent = effective_indent(ignore_chars);
+            while (!eof_)
+            {
+                const size_t indent = effective_indent(ignore_chars);
+                const StringView content = effective_content(ignore_chars);
 
-            if (first_line_indent != required_indent || !is_sequence_marker(first_line))
-                return false;
-            
-            // Parse and push the first item of the sequence.
-            out_seq.push_back(parse_sequence_item(first_line, required_indent));
+                if (indent != required_indent || !is_sequence_marker(content))
+                    break;
 
-            // Parse and push all remaining items (without ignoring leading chars on further lines).
-            while (!eof_ && indent_ == required_indent && is_sequence_marker(content_))
-                out_seq.push_back(parse_sequence_item(content_, required_indent));
+                StringView value = content.substr(1); // remove leading '-'
+                size_t extra = 1 + strip_leading_whitespace(value);
+                size_t item_indent = required_indent + extra;
 
-            return true;
+                if (value.empty())
+                {
+                    // Nothing more on this physical line; consume it and expect
+                    // the item's value on the following line(s).
+                    read_line();
+                    out_seq.push_back(parse_block(item_indent));
+                }
+                else
+                {
+                    // A value follows the marker on this same physical line.
+                    // `item_ignore_chars` is how many characters sit before the
+                    // real value on the physical line (`content_`).
+                    // Example: " - - a" may have indent_=1, item_indent=3 ->
+                    // item_ignore_chars=2 (cuts away the parent's "- ").
+                    const size_t item_ignore_chars = item_indent - indent_;
+                    out_seq.push_back(parse_block(item_indent, item_ignore_chars));
+                }
+
+                ignore_chars = 0; // later items start on their own fresh line
+            }
+
+            return !out_seq.empty();
         }
 
+        // Tries to parse a mapping with all "key: value" lines.
+        // Each key must sit at exactly `required_indent`.
         bool try_parse_mapping(size_t required_indent, size_t ignore_chars, Node& out_map)
         {
-            // Adjust first line for `ignore_chars`, analogous to `try_parse_sequence`.
-            const StringView first_line = effective_content(ignore_chars);
+            out_map = {};
 
+            // The key could be quoted, with folding and escape sequences.
+            // Thus, it cannot be a StringView and must be able to be built.
             std::string key;
-            StringView rest;
-            if (!is_mapping_kvp(first_line, key, rest))
-                return false;
 
-            read_line();
-            out_map = parse_mapping_lines(required_indent, &key, &rest);
-            return true;
+            while (!eof_)
+            {
+                const size_t indent = effective_indent(ignore_chars);
+                const StringView content = effective_content(ignore_chars);
+
+                if (indent != required_indent)
+                    break;
+
+                key.clear();
+                StringView rest;
+                if (!is_mapping_kvp(content, key, rest))
+                    break;
+
+                read_line();
+
+                // Value must be indented deeper than the key (even if on the same line).
+                const size_t value_indent = required_indent + 1;
+
+                if (rest.empty())
+                {
+                    // Value not on the key line; expect the value on the next line.
+                    out_map[key] = parse_block(value_indent);
+                }
+                else
+                {
+                    // Value on same line as the key; only a scalar is permitted here.
+                    out_map[key] = parse_scalar_value(rest, value_indent);
+                }
+
+                ignore_chars = 0;
+            }
+
+            return !out_map.empty();
         }
 
         Node parse_scalar(size_t indent, size_t ignore_chars = 0)
@@ -129,41 +175,12 @@ namespace parsley { namespace detail
             return content.starts_with("- ");
         }
 
-        // Parses a single sequence item given its marker line's content
-        // (starting at '-') and the marker's indent. The physical line
-        // this marker sits on has NOT been consumed yet.
-        Node parse_sequence_item(StringView content, size_t marker_indent)
-        {
-            StringView value = content.substr(1); // remove leading '-'
-            size_t extra = 1 + strip_leading_whitespace(value);
-            size_t item_indent = marker_indent + extra;
-
-            if (value.empty())
-            {
-                // Nothing more on this physical line; consume it and expect
-                // the item's value on the following line(s).
-                read_line();
-                return parse_block(item_indent);
-            }
-
-            // A value follows the marker on this same physical line.
-            // The value could be a scalar, mapping, or nested sequence ("- - a").
-            // `ignore_chars` is how many characters sit before the real value
-            // on the physical line (`content_`).
-            // Example: " - - a" may have indent_=1, item_indent=3 -> ignore_chars=2
-            // (cuts away the parent's "- ").
-            const size_t ignore_chars = item_indent - indent_;
-
-            // Parse the block that is following on the same line as the '-' marker.
-            return parse_block(item_indent, ignore_chars);
-        }
-
         // --- Mapping Details ------------------------------------------------
 
         // Detects "key: rest" at the start of `content`, where key may be 
-        // plain or single/double-quoted.
-        // Parses the key completely (incl. substitution of line breaks, escape
-        // sequences etc.) and returns the unprocessed rest of the line.
+        // plain or single/double-quoted. Parses the key completely (incl. 
+        // substitution of line breaks, escape sequences etc.) and returns the 
+        // unprocessed rest of the line.
         bool is_mapping_kvp(StringView content, std::string& out_key, StringView& out_rest)
         {
             if (content.empty())
@@ -215,49 +232,6 @@ namespace parsley { namespace detail
 
             out_rest = s;
             return true;
-        }
-
-        // Parses zero or more "key: value" lines sitting at exactly `indent`.
-        // If `first_key`/`first_rest` are given, they're an already-consumed
-        // pair (the caller peeled it off a "- key: value" or lookahead line
-        // before knowing it was starting a mapping) and get added first,
-        // without re-reading a line for it.
-        Node parse_mapping_lines(
-            size_t key_indent,
-            const std::string* first_key = nullptr,
-            const StringView* first_rest = nullptr)
-        {
-            Node map;
-
-            if (first_key)
-                add_kvp(map, *first_key, *first_rest, key_indent);
-
-            while (!eof_ && indent_ == key_indent)
-            {
-                std::string key;
-                StringView rest;
-                if (!is_mapping_kvp(content_, key, rest))
-                    break;
-
-                read_line();
-                add_kvp(map, key, rest, key_indent);
-            }
-
-            return map;
-        }
-
-        void add_kvp(Node& map, const std::string& key, StringView rest, size_t key_indent)
-        {
-            if (rest.empty())
-            {
-                // Value not on the key line; expect the value on the next line.
-                // In this situation, the value could be anything (scalar, sequence, map).
-                map[key] = parse_block(key_indent + 1); // +1 because value must be deeper
-                return;
-            }
-
-            // Value on same line as the key; only a scalar is permitted here.
-            map[key] = parse_scalar_value(rest, key_indent + 1);
         }
 
         // --- Scalar Details -------------------------------------------------
