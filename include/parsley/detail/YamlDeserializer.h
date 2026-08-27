@@ -59,6 +59,16 @@ namespace parsley { namespace detail
 
             Node node;
 
+            // TODO:
+            // What we should actually do here:
+            //  - check if it's a sequence (sequence marker) -> parse sequence
+            //  - if not a sequence -> parse scalar
+            //  - if the scalar was single-line (maybe just return an int indicating lines parsed):
+            //      - check if the next char on the same line is ": " or ":\n"
+            //      - if yes, parse a mapping -> re-use the already parsed scalar as the key
+            // This should avoid the awkward double-parsing and the fact that try_parse_mapping is "fat".
+            // Ideally, we wouldn't need any "try_***" methods at all.
+
             if (try_parse_sequence(indent, ignore_chars, node))
                 return node;
 
@@ -159,15 +169,73 @@ namespace parsley { namespace detail
         // Parses a scalar value starting at the current line, adjusted by
         // `ignore_chars` (chars already consumed by an enclosing construct on
         // this same physical line, e.g. the "key: " before a same-line value).
-        Node parse_scalar(size_t indent, size_t ignore_chars = 0)
-        {
-            const StringView first_line = effective_content(ignore_chars);
-            read_line();
+        Node parse_scalar(size_t min_indent, size_t ignore_chars = 0)
+        {           
+            char quote;
+            bool is_quoted;
+            std::string text;
+            size_t blank_lines = 0;
+            size_t lines_parsed = 0;
 
-            if (!first_line.empty() && is_quote(first_line[0]))
-                return parse_quoted_scalar_value(first_line);
+            while (!eof_)
+            {
+                bool line_continuation = false;
 
-            return parse_scalar_folded(first_line, indent);
+                const size_t indent = effective_indent(ignore_chars);
+                StringView content = effective_content(ignore_chars);
+
+                if (lines_parsed == 0)
+                {
+                    if (content.empty())
+                        return Node{};
+
+                    quote = content.front();
+                    is_quoted = is_quote(quote);
+
+                    if (is_quoted)
+                        content.remove_prefix(1); // remove the quote
+                }
+
+                read_line();
+                ++lines_parsed;
+
+                if (is_quoted)
+                {
+                    if (parse_quoted_line(content, quote, text, &line_continuation))
+                        break; // closing quote found
+                }
+                else
+                {
+                    std::string key;
+                    StringView rest;
+                    if (is_sequence_marker(content) || is_mapping_kvp(content, key, rest))
+                        break; // deeper line that's actually a new construct
+    
+                    text.append(content.data(), content.size());
+                }
+            
+                if (eof_)
+                    break;
+
+                if (!is_quoted && !content_.empty() && indent_ < min_indent) // TODO: shouldn't be using indent_ here
+                    break; // dedent / sibling: fold ends
+
+                if (content_.empty())
+                {
+                    ++blank_lines;
+                }
+                else
+                {
+                    if (!is_quoted || !line_continuation)
+                        append_fold_separator(text, blank_lines);
+
+                    blank_lines = 0;
+                }
+
+                ignore_chars = 0;
+            }
+
+            return Node(std::move(text));
         }
 
         // --- Sequence Details -----------------------------------------------
@@ -194,8 +262,9 @@ namespace parsley { namespace detail
             if (content.empty())
                 return false;
 
-            StringView& s = content;
+            StringView& s = content; // alias for brevity
 
+            // TODO: We're really trying to parse a scalar here until we find a ":"
             if (is_quote(s.front()))
             {
                 const char quote = s.front();
@@ -226,6 +295,7 @@ namespace parsley { namespace detail
                 out_key = s.substr(0, i).to_owned();
                 s.remove_prefix(i);
             }
+            // ~TODO ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
             // s now starts right where the key token ended.
             // The next characters must be ':' followed by a space or end of line 
@@ -244,41 +314,6 @@ namespace parsley { namespace detail
 
         // --- Scalar Details -------------------------------------------------
 
-        // Folds in lines whose indent reaches min_indent or deeper:
-        // consecutive lines join with a space, a blank line in the
-        // run joins with '\n' instead.
-        Node parse_scalar_folded(StringView first_line, size_t min_indent)
-        {
-            std::string text = first_line.to_owned();
-            size_t blank_lines = 0;
-
-            while (!eof_)
-            {
-                if (content_.empty())
-                {
-                    ++blank_lines;
-                    read_line();
-                    continue;
-                }
-
-                if (indent_ < min_indent)
-                    break; // dedent / sibling: fold ends
-
-                StringView content = content_;
-                std::string key;
-                StringView rest;
-                if (is_sequence_marker(content) || is_mapping_kvp(content, key, rest))
-                    break; // deeper line that's actually a new construct
-
-                append_fold_separator(text, blank_lines);
-                blank_lines = 0;
-                text += content.to_owned();
-                read_line();
-            }
-
-            return Node(std::move(text));
-        }
-
         // Appends the separator that joins two folded lines.
         // Line breaks convert to a space " ". However, a series of n blank
         // lines becomes a series of n line breaks.
@@ -287,53 +322,9 @@ namespace parsley { namespace detail
             text += blank_lines ? std::string(blank_lines, '\n') : " ";
         }
 
-        // --- Quoted Scalars ---------------------------------------------------
-
         static bool is_quote(char c)
         {
             return c == '"' || c == '\'';
-        }
-
-        Node parse_quoted_scalar_value(StringView first_line)
-        {
-            StringView& s = first_line; // alias for brevity
-
-            const char quote = first_line.front();
-            s.remove_prefix(1);
-
-            std::string text;
-            size_t blank_lines = 0;
-
-            for (;;)
-            {
-                bool line_continuation = false;
-                if (parse_quoted_line(s, quote, text, &line_continuation))
-                    break; // closing quote found
-
-                if (eof_)
-                    break; // unterminated quote at eof
-
-                if (content_.empty())
-                {
-                    ++blank_lines;
-                    read_line();
-                    continue;
-                }
-                
-                // Double-quoted scalars may request line continuation with a
-                // trailing '\' at the end of a line.
-                // If this continuation is requested, we do not fold and instead
-                // concatenate text between lines.
-                if (!line_continuation)
-                    append_fold_separator(text, blank_lines);
-
-                blank_lines = 0;
-
-                s = content_;
-                read_line();
-            }
-
-            return Node(std::move(text));
         }
 
         // Parses a line of a quoted scalar.
